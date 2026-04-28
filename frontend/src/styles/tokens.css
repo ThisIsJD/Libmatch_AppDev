@@ -1,0 +1,53 @@
+:root {
+  /* Colors */
+  --color-primary: #0075de;
+  --color-primary-hover: #005bab;
+  --color-primary-active: #004a94;
+  --color-background: #ffffff;
+  --color-background-alt: #f6f5f4;
+  --color-surface: #ffffff;
+  --color-text-primary: rgba(0, 0, 0, 0.95);
+  --color-text-secondary: #615d59;
+  --color-text-muted: #a39e98;
+  --color-border: rgba(0, 0, 0, 0.1);
+  --color-success: #1aae39;
+  --color-success-bg: #f0fdf4;
+  --color-warning: #dd5b00;
+  --color-warning-bg: #fff7ed;
+  --color-pending: #615d59;
+  --color-pending-bg: #f6f5f4;
+  --color-badge-blue-bg: #f2f9ff;
+  --color-badge-blue-text: #097fe8;
+  --color-focus: #097fe8;
+  --color-overlay: rgba(0, 0, 0, 0.4);
+
+  /* Radii */
+  --radius-micro: 4px;
+  --radius-subtle: 5px;
+  --radius-standard: 8px;
+  --radius-comfortable: 12px;
+  --radius-large: 16px;
+  --radius-pill: 9999px;
+  --radius-circle: 100%;
+
+  /* Spacing Scale */
+  --space-px-2: 2px;
+  --space-px-4: 4px;
+  --space-px-8: 8px;
+  --space-px-12: 12px;
+  --space-px-16: 16px;
+  --space-px-24: 24px;
+  --space-px-32: 32px;
+  --space-px-48: 48px;
+  --space-px-64: 64px;
+  --space-px-80: 80px;
+  --space-px-120: 120px;
+
+  /* Shadows */
+  --shadow-card: rgba(0, 0, 0, 0.04) 0px 4px 18px,
+    rgba(0, 0, 0, 0.027) 0px 2.025px 7.847px, rgba(0, 0, 0, 0.02) 0px 0.8px 2.925px,
+    rgba(0, 0, 0, 0.01) 0px 0.175px 1.041px;
+  --shadow-deep: rgba(0, 0, 0, 0.01) 0px 1px 3px,
+    rgba(0, 0, 0, 0.02) 0px 3px 7px, rgba(0, 0, 0, 0.02) 0px 7px 15px,
+    rgba(0, 0, 0, 0.04) 0px 14px 28px, rgba(0, 0, 0, 0.05) 0px 23px 52px;
+}
