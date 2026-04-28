@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from collections import defaultdict
 from functools import lru_cache
 
@@ -12,6 +13,32 @@ SPACY_MODEL_NAME = "en_core_web_sm"
 NOUN_CHUNK_WEIGHT = 1.0
 ENTITY_WEIGHT = 1.5
 MAX_TOPIC_WORDS = 8
+MIN_STRUCTURED_TOPICS = 3
+
+COURSE_COVERAGE_MARKERS = (
+    "course coverage",
+    "course outline",
+    "course content",
+)
+
+COURSE_COVERAGE_END_MARKERS = (
+    "learning resources",
+    "required references",
+    "references",
+    "course requirements",
+    "course policies",
+    "prepared by",
+    "checked by",
+    "approved by",
+    "signature over printed name",
+)
+
+TOPIC_WITH_HOURS_PATTERN = re.compile(
+    r"([A-Za-z][^\n()]{3,140}?)\s*\(\s*\d+(?:\.\d+)?\s*hrs?\s*\)",
+    flags=re.IGNORECASE,
+)
+
+LEADING_BULLET_PATTERN = re.compile(r"^(?:[-*•]+\s*|\d+[.)]\s*)+")
 
 
 @lru_cache
@@ -27,9 +54,23 @@ def get_nlp() -> Language:
 
 
 def extract_topics(text: str, limit: int = 20) -> list[dict[str, str | float]]:
-    """Extract ranked topic suggestions from free text using noun chunks and entities."""
+    """Extract ranked topic suggestions from structured coverage text or spaCy fallback."""
     if limit <= 0:
         return []
+
+    structured_topics = _extract_structured_topics(text)
+    structured_threshold = min(MIN_STRUCTURED_TOPICS, limit)
+    if len(structured_topics) >= structured_threshold:
+        selected_topics = structured_topics[:limit]
+        equal_weight = round(1.0 / len(selected_topics), 4)
+        return [
+            {
+                "topic_text": topic_text,
+                "weight": equal_weight,
+                "source": "extracted",
+            }
+            for topic_text in selected_topics
+        ]
 
     normalized = _normalize_input_text(text)
     if not normalized:
@@ -68,6 +109,72 @@ def _collect_topic_scores(doc: Doc) -> dict[str, float]:
             scores[candidate] += ENTITY_WEIGHT
 
     return dict(scores)
+
+
+def _extract_structured_topics(text: str) -> list[str]:
+    """Extract topic rows that follow the common '(X hrs)' course-coverage format."""
+    if not text or not text.strip():
+        return []
+
+    coverage_text = _slice_course_coverage(text)
+    candidates = [match.group(1) for match in TOPIC_WITH_HOURS_PATTERN.finditer(coverage_text)]
+
+    topics: list[str] = []
+    seen: set[str] = set()
+
+    for candidate in candidates:
+        normalized_topic = _normalize_structured_topic(candidate)
+        if not normalized_topic:
+            continue
+
+        dedupe_key = normalized_topic.casefold()
+        if dedupe_key in seen:
+            continue
+
+        seen.add(dedupe_key)
+        topics.append(normalized_topic)
+
+    return topics
+
+
+def _slice_course_coverage(text: str) -> str:
+    """Limit parsing to the likely course-coverage section when markers are present."""
+    lowered = text.lower()
+
+    start_index = -1
+    for marker in COURSE_COVERAGE_MARKERS:
+        marker_index = lowered.find(marker)
+        if marker_index != -1:
+            start_index = marker_index
+            break
+
+    if start_index == -1:
+        return text
+
+    end_index = len(text)
+    for marker in COURSE_COVERAGE_END_MARKERS:
+        marker_index = lowered.find(marker, start_index + 1)
+        if marker_index != -1:
+            end_index = min(end_index, marker_index)
+
+    return text[start_index:end_index]
+
+
+def _normalize_structured_topic(candidate: str) -> str | None:
+    """Clean and validate topic strings extracted from structured regex matches."""
+    cleaned = LEADING_BULLET_PATTERN.sub("", candidate)
+    cleaned = " ".join(cleaned.split()).strip(" -:;,.")
+
+    if len(cleaned) < 5 or len(cleaned) > 140:
+        return None
+
+    if not re.search(r"[A-Za-z]", cleaned):
+        return None
+
+    if cleaned.lower().startswith(("week ", "module ", "chapter ")):
+        return None
+
+    return cleaned
 
 
 def _candidate_from_span(span: Span) -> str | None:

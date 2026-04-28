@@ -186,7 +186,7 @@ function DashboardPage() {
                   key={syllabus.id}
                   syllabus={syllabus}
                   onContinueMatching={() => {
-                    setInfoMessage('Topic review routing will be connected in Phase 5.')
+                    navigate(`/syllabi/${syllabus.id}/topics`)
                   }}
                 />
               ))}

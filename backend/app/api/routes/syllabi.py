@@ -47,6 +47,26 @@ def list_syllabi(
     return [SyllabusRead.model_validate(syllabus) for syllabus in syllabi]
 
 
+@router.get("/{syllabus_id}", response_model=SyllabusRead)
+def get_syllabus(
+    syllabus_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> SyllabusRead:
+    stmt = (
+        select(Syllabus)
+        .options(selectinload(Syllabus.course))
+        .where(Syllabus.id == syllabus_id, Syllabus.uploaded_by == current_user.id)
+    )
+    syllabus = db.execute(stmt).scalar_one_or_none()
+    if syllabus is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Syllabus not found",
+        )
+    return SyllabusRead.model_validate(syllabus)
+
+
 @router.post("/upload", response_model=SyllabusRead, status_code=status.HTTP_201_CREATED)
 def upload_syllabus(
     course_id: uuid.UUID = Form(...),

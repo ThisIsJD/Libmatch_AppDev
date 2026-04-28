@@ -42,4 +42,7 @@ pnpm-debug.log*
 
 # Project docs/templates not for commit
 ProjectContext/
+new_skills/
 .github-template/
+GEMINI.md
+update_skills.py
