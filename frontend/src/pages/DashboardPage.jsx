@@ -6,6 +6,7 @@ import { apiClient } from '../api/client.js'
 import NavBar from '../components/NavBar.jsx'
 import SearchBar from '../components/SearchBar.jsx'
 import SyllabusCard from '../components/SyllabusCard.jsx'
+import UploadModal from '../components/UploadModal.jsx'
 import { clearSession, getStoredUser } from '../lib/authSession.js'
 
 function DashboardPage() {
@@ -18,6 +19,7 @@ function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState('')
   const [infoMessage, setInfoMessage] = useState('')
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
 
   useEffect(() => {
     let isMounted = true
@@ -87,6 +89,27 @@ function DashboardPage() {
     navigate('/login', { replace: true })
   }
 
+  async function handleUploadSuccess() {
+    try {
+      const syllabiResponse = await apiClient.get('/syllabi')
+      setSyllabi(Array.isArray(syllabiResponse.data) ? syllabiResponse.data : [])
+      setErrorMessage('')
+      setInfoMessage('Syllabus uploaded and processed successfully.')
+      setIsUploadModalOpen(false)
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response) {
+        const detail =
+          typeof error.response.data?.detail === 'string'
+            ? error.response.data.detail
+            : 'Upload succeeded but failed to refresh syllabi list.'
+        setErrorMessage(detail)
+      } else {
+        setErrorMessage('Upload succeeded but failed to refresh syllabi list.')
+      }
+      setIsUploadModalOpen(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background-alt">
       <NavBar user={user} onSignOut={handleSignOut} />
@@ -98,9 +121,19 @@ function DashboardPage() {
           syllabusCount={syllabi.length}
           courseCount={courses.length}
           onUploadClick={() => {
-            setInfoMessage('Upload modal will be connected in Phase 4.')
+            setInfoMessage('')
+            setIsUploadModalOpen(true)
           }}
         />
+
+        {isUploadModalOpen ? (
+          <UploadModal
+            isOpen={isUploadModalOpen}
+            courses={courses}
+            onClose={() => setIsUploadModalOpen(false)}
+            onUploadSuccess={handleUploadSuccess}
+          />
+        ) : null}
 
         {infoMessage ? (
           <p className="mt-4 rounded-standard border border-border bg-background px-3 py-2 text-caption text-text-secondary">

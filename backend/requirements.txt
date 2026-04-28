@@ -2,10 +2,14 @@ alembic==1.13.3
 bcrypt==4.0.1
 fastapi==0.115.2
 passlib[bcrypt]==1.7.4
+PyPDF2==3.0.1
 psycopg2-binary==2.9.9
 pydantic==2.9.2
 pydantic-settings==2.6.0
+python-docx==1.1.2
 python-dotenv==1.0.1
 python-jose[cryptography]==3.3.0
+python-multipart==0.0.9
+spacy==3.7.5
 SQLAlchemy==2.0.36
 uvicorn[standard]==0.32.0
