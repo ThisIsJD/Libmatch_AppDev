@@ -34,16 +34,16 @@ COURSE_COVERAGE_END_MARKERS = (
 )
 
 TOPIC_WITH_HOURS_PATTERN = re.compile(
-    r"(?:[-*•]+\s*|\d+[.)]\s*)?([A-Za-z][^()]{3,140}?)[\s\n]*\(\s*\d+(?:\.\d+)?\s*hrs?\s*\)",
+    r"(?:[-*•●]+\s*|\d+[.)]\s*)?([A-Za-z][^●•*]{3,140}?)[\s\n]*\(\s*[\d\s.]+\s*hrs?\s*\)?",
     flags=re.IGNORECASE,
 )
 
 BULLET_TOPIC_PATTERN = re.compile(
-    r"[-*•]+\s*([A-Za-z][^\n()]{3,140})",
+    r"[-*•●]+\s*([A-Za-z][^●•*]{3,140})",
     flags=re.IGNORECASE,
 )
 
-LEADING_BULLET_PATTERN = re.compile(r"^(?:[-*•]+\s*|\d+[.)]\s*)+")
+LEADING_BULLET_PATTERN = re.compile(r"^(?:[-*•●]+\s*|\d+[.)]\s*)+")
 
 
 @lru_cache
