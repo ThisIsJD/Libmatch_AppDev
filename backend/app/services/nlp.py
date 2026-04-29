@@ -34,7 +34,12 @@ COURSE_COVERAGE_END_MARKERS = (
 )
 
 TOPIC_WITH_HOURS_PATTERN = re.compile(
-    r"([A-Za-z][^\n()]{3,140}?)\s*\(\s*\d+(?:\.\d+)?\s*hrs?\s*\)",
+    r"(?:[-*•]+\s*|\d+[.)]\s*)?([A-Za-z][^()]{3,140}?)[\s\n]*\(\s*\d+(?:\.\d+)?\s*hrs?\s*\)",
+    flags=re.IGNORECASE,
+)
+
+BULLET_TOPIC_PATTERN = re.compile(
+    r"[-*•]+\s*([A-Za-z][^\n()]{3,140})",
     flags=re.IGNORECASE,
 )
 
@@ -112,12 +117,18 @@ def _collect_topic_scores(doc: Doc) -> dict[str, float]:
 
 
 def _extract_structured_topics(text: str) -> list[str]:
-    """Extract topic rows that follow the common '(X hrs)' course-coverage format."""
+    """Extract topic rows from course coverage using structured patterns."""
     if not text or not text.strip():
         return []
 
     coverage_text = _slice_course_coverage(text)
+    
+    # Primary: Extract topics with (X hrs) format
     candidates = [match.group(1) for match in TOPIC_WITH_HOURS_PATTERN.finditer(coverage_text)]
+    
+    # Secondary: Fallback to bullet lists if hours pattern yields few results
+    if len(candidates) < MIN_STRUCTURED_TOPICS:
+        candidates.extend([match.group(1) for match in BULLET_TOPIC_PATTERN.finditer(coverage_text)])
 
     topics: list[str] = []
     seen: set[str] = set()
@@ -145,7 +156,12 @@ def _slice_course_coverage(text: str) -> str:
     for marker in COURSE_COVERAGE_MARKERS:
         marker_index = lowered.find(marker)
         if marker_index != -1:
-            start_index = marker_index
+            # Skip the marker line to avoid matching header text as a topic
+            header_end = text.find("\n", marker_index)
+            if header_end != -1:
+                start_index = header_end + 1
+            else:
+                start_index = marker_index + len(marker)
             break
 
     if start_index == -1:
@@ -171,7 +187,8 @@ def _normalize_structured_topic(candidate: str) -> str | None:
     if not re.search(r"[A-Za-z]", cleaned):
         return None
 
-    if cleaned.lower().startswith(("week ", "module ", "chapter ")):
+    # Filter out section headers misidentified as topics
+    if cleaned.lower().startswith(("week ", "module ", "chapter ", "course ")):
         return None
 
     return cleaned
