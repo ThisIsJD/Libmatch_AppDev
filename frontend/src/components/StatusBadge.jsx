@@ -17,7 +17,7 @@ function StatusBadge({ status }) {
 
   return (
     <span
-      className={`inline-flex items-center rounded-pill px-2.5 py-1 text-badge tracking-[0.08em] ${styleClass}`}
+      className={`inline-flex items-center rounded-pill px-px12 py-px4 text-badge font-semibold tracking-[0.125px] ${styleClass}`}
     >
       {label}
     </span>

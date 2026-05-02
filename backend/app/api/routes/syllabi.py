@@ -24,6 +24,7 @@ from app.models.topic import Topic
 from app.models.user import User
 from app.schemas.syllabus import SyllabusRead
 from app.services.extractor import extract_text
+from app.services.nlp import extract_keywords_for_topic
 from app.services.nlp import extract_topics
 from app.services.storage import infer_file_type
 from app.services.storage import save_upload_file
@@ -121,12 +122,15 @@ def upload_syllabus(
             db.add(topic)
             db.flush()
 
-            keyword = Keyword(
-                topic_id=topic.id,
-                keyword_text=topic_text,
-                weight=float(suggestion.get("weight", 0.0)),
-            )
-            db.add(keyword)
+            keyword_suggestions = extract_keywords_for_topic(topic_text, raw_text)
+            for keyword_suggestion in keyword_suggestions:
+                keyword = Keyword(
+                    topic_id=topic.id,
+                    keyword_text=str(keyword_suggestion.get("keyword_text", "")).strip(),
+                    weight=float(keyword_suggestion.get("weight", 0.0)),
+                )
+                if keyword.keyword_text:
+                    db.add(keyword)
 
         db.commit()
         upload_succeeded = True

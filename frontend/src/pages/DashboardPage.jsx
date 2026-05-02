@@ -16,6 +16,7 @@ function DashboardPage() {
   const [courses, setCourses] = useState([])
   const [syllabi, setSyllabi] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState('')
   const [infoMessage, setInfoMessage] = useState('')
@@ -70,19 +71,23 @@ function DashboardPage() {
 
   const filteredSyllabi = useMemo(() => {
     const needle = searchQuery.trim().toLowerCase()
-    if (!needle) {
-      return syllabi
-    }
 
     return syllabi.filter((row) => {
+      const matchesStatus = statusFilter === 'all' || row.status === statusFilter
+      if (!matchesStatus) {
+        return false
+      }
+
+      if (!needle) {
+        return true
+      }
+
       const haystack = [row.file_name, row.course?.course_code, row.course?.course_title]
       return haystack.some(
         (value) => typeof value === 'string' && value.toLowerCase().includes(needle),
       )
     })
-  }, [searchQuery, syllabi])
-
-  const coursePreview = useMemo(() => courses.slice(0, 6), [courses])
+  }, [searchQuery, statusFilter, syllabi])
 
   function handleSignOut() {
     clearSession()
@@ -111,15 +116,24 @@ function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background-alt">
+    <div className="min-h-screen bg-background">
       <NavBar user={user} onSignOut={handleSignOut} />
 
-      <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+      <main className="mx-auto w-full max-w-[1200px] px-px32 py-px32 sm:px-px32 lg:px-px32 lg:py-px32">
+        <header className="mb-px24">
+          <h1 className="text-heading-lg font-bold tracking-[-0.625px] text-text-primary">
+            Syllabus Gallery
+          </h1>
+          <p className="mt-px4 text-caption-light text-text-secondary">
+            Match syllabus topics to specific chapters
+          </p>
+        </header>
+
         <SearchBar
           value={searchQuery}
           onChange={setSearchQuery}
-          syllabusCount={syllabi.length}
-          courseCount={courses.length}
+          filterValue={statusFilter}
+          onFilterChange={setStatusFilter}
           onUploadClick={() => {
             setInfoMessage('')
             setIsUploadModalOpen(true)
@@ -136,38 +150,19 @@ function DashboardPage() {
         ) : null}
 
         {infoMessage ? (
-          <p className="mt-4 rounded-standard border border-border bg-background px-3 py-2 text-caption text-text-secondary">
+          <p className="mt-px16 rounded-standard border border-border bg-background px-px12 py-px8 text-caption font-medium text-text-secondary">
             {infoMessage}
           </p>
         ) : null}
 
         {errorMessage ? (
-          <p className="mt-4 rounded-standard border border-warning/25 bg-warning-bg px-3 py-2 text-caption text-warning">
+          <p className="mt-px16 rounded-standard border border-warning/25 bg-warning-bg px-px12 py-px8 text-caption font-medium text-warning">
             {errorMessage}
           </p>
         ) : null}
 
-        <section className="mt-6 rounded-large border border-border bg-surface p-5 shadow-card sm:p-6">
-          <h3 className="text-body-semibold text-text-primary">Active Courses</h3>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {coursePreview.length > 0 ? (
-              coursePreview.map((course) => (
-                <span
-                  key={course.id}
-                  className="rounded-pill border border-border bg-background-alt px-3 py-1 text-caption text-text-secondary"
-                >
-                  {course.course_code} - {course.course_title}
-                </span>
-              ))
-            ) : (
-              <p className="text-caption-light text-text-secondary">No courses found yet.</p>
-            )}
-          </div>
-        </section>
-
-        <section className="mt-6">
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-heading-md text-text-primary">Recent Syllabi</h3>
+        <section className="mt-px32">
+          <div className="mb-px12 flex items-center justify-between">
             {searchQuery.trim() ? (
               <p className="text-caption text-text-secondary">
                 {filteredSyllabi.length} result{filteredSyllabi.length === 1 ? '' : 's'}
@@ -176,11 +171,11 @@ function DashboardPage() {
           </div>
 
           {isLoading ? (
-            <div className="rounded-large border border-border bg-surface p-6 text-caption text-text-secondary shadow-card">
+            <div className="rounded-large border border-border bg-surface p-px24 text-caption text-text-secondary shadow-card">
               Loading dashboard data...
             </div>
           ) : filteredSyllabi.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-px20 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {filteredSyllabi.map((syllabus) => (
                 <SyllabusCard
                   key={syllabus.id}
@@ -192,10 +187,10 @@ function DashboardPage() {
               ))}
             </div>
           ) : (
-            <div className="rounded-large border border-border bg-surface p-6 shadow-card">
-              <p className="text-body-semibold text-text-primary">No syllabus uploads yet.</p>
-              <p className="mt-1 text-caption-light text-text-secondary">
-                Click Upload Syllabus to add your first PDF or DOCX file in Phase 4.
+            <div className="rounded-large border border-border bg-surface p-px24 shadow-card">
+              <p className="text-body-semibold font-semibold text-text-primary">No syllabus uploads yet.</p>
+              <p className="mt-px8 text-caption-light text-text-secondary">
+                Click Upload Syllabus to add your first PDF or DOCX file.
               </p>
             </div>
           )}

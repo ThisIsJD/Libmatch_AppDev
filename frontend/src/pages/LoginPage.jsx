@@ -80,46 +80,42 @@ function LoginPage() {
   }
 
   return (
-    <main className="relative isolate min-h-screen overflow-hidden bg-background-alt px-4 py-8 sm:px-6 lg:px-10 lg:py-12">
+    <main className="relative isolate min-h-screen overflow-hidden bg-background-alt px-px16 py-px32 lg:flex lg:items-center lg:justify-center">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -top-24 left-1/4 h-72 w-72 rounded-circle bg-badge-blue-bg opacity-80 blur-3xl" />
         <div className="absolute bottom-0 right-0 h-80 w-80 rounded-circle bg-success-bg opacity-70 blur-3xl" />
       </div>
 
-      <div className="relative mx-auto grid w-full max-w-6xl items-stretch gap-6 lg:grid-cols-[1.15fr_1fr]">
-        <section className="rounded-large border border-border bg-surface px-6 py-7 shadow-card sm:px-8 sm:py-10">
-          <p className="text-caption font-semibold uppercase tracking-[0.08em] text-text-secondary">
+      <div className="relative mx-auto flex w-full max-w-[900px] flex-col overflow-hidden rounded-large border border-border bg-surface shadow-deep lg:flex-row">
+        {/* Left Side: Brand Panel §4.10 */}
+        <section className="flex w-full flex-col justify-between bg-primary p-px48 text-white lg:w-[45%]">
+          <div>
+            <div className="flex items-center gap-px8">
+              <svg className="h-px32 w-px32" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
+              <span className="text-[22px] font-bold">LibMatch</span>
+            </div>
+            
+            <h1 className="mt-px32 text-heading-lg font-bold leading-[1.23] tracking-[-0.625px]">
+              Hello, welcome back!
+            </h1>
+            <p className="mt-px16 text-body font-normal leading-[1.50] text-white/85">
+              LibMatch keeps syllabus matching focused, consistent, and fast. Sign in to your faculty workspace.
+            </p>
+          </div>
+
+          <p className="mt-px48 text-caption font-normal text-white/65">
             Universidad de Nueva Caceres
           </p>
-          <h1 className="mt-4 max-w-lg text-heading-lg text-text-primary sm:text-display sm:leading-[1.03] sm:tracking-[-1.1px]">
-            LibMatch keeps syllabus matching focused, consistent, and fast.
-          </h1>
-          <p className="mt-4 max-w-xl text-body text-text-secondary sm:text-body-lg sm:font-medium">
-            Sign in as Faculty to upload syllabi, review topic suggestions, and keep your
-            course indexing flow organized in one workspace.
-          </p>
-
-          <div className="mt-8 grid gap-3 sm:grid-cols-3">
-            <article className="rounded-comfortable border border-border bg-background p-4">
-              <p className="text-micro uppercase tracking-[0.12em] text-text-muted">Upload</p>
-              <p className="mt-1 text-body-medium text-text-primary">PDF and DOCX support</p>
-            </article>
-            <article className="rounded-comfortable border border-border bg-background p-4">
-              <p className="text-micro uppercase tracking-[0.12em] text-text-muted">Extract</p>
-              <p className="mt-1 text-body-medium text-text-primary">Raw text + NLP topics</p>
-            </article>
-            <article className="rounded-comfortable border border-border bg-background p-4">
-              <p className="text-micro uppercase tracking-[0.12em] text-text-muted">Search</p>
-              <p className="mt-1 text-body-medium text-text-primary">Sub-5 second lookup</p>
-            </article>
-          </div>
         </section>
 
-        <section className="rounded-large border border-border bg-surface p-6 shadow-card sm:p-8">
+        {/* Right Side: Form Panel §4.10 */}
+        <section className="w-full bg-surface p-px48 lg:w-[55%]">
           <p className="text-caption text-text-secondary">Account Access</p>
-          <h2 className="mt-2 text-heading-md text-text-primary">Sign in to continue</h2>
+          <h2 className="mt-px8 text-heading-md font-bold tracking-[-0.25px] text-text-primary">Sign in to continue</h2>
 
-          <div className="mt-5">
+          <div className="mt-px24">
             <RoleTabSelector
               activeRole="faculty"
               onBlockedRoleSelect={(roleLabel) => {
@@ -130,55 +126,55 @@ function LoginPage() {
             />
           </div>
 
-          <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+          <form className="mt-px24 space-y-px16" onSubmit={handleSubmit}>
             <label className="block">
-              <span className="mb-1.5 block text-caption font-medium text-text-secondary">Email</span>
+              <span className="mb-px4 block text-caption font-medium text-text-primary">Email</span>
               <input
                 type="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="faculty@libmatch.dev"
                 autoComplete="email"
-                className="w-full rounded-standard border border-border bg-background px-3 py-2.5 text-body text-text-primary placeholder:text-text-muted focus:border-focus focus:outline-none focus:ring-2 focus:ring-badge-blue-bg"
+                className="w-full rounded-micro border border-border bg-background px-px12 py-px8 text-body text-text-primary placeholder:text-text-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-badge-blue-bg"
               />
             </label>
 
             <label className="block">
-              <span className="mb-1.5 block text-caption font-medium text-text-secondary">Password</span>
+              <span className="mb-px4 block text-caption font-medium text-text-primary">Password</span>
               <input
                 type="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 placeholder="Enter your password"
                 autoComplete="current-password"
-                className="w-full rounded-standard border border-border bg-background px-3 py-2.5 text-body text-text-primary placeholder:text-text-muted focus:border-focus focus:outline-none focus:ring-2 focus:ring-badge-blue-bg"
+                className="w-full rounded-micro border border-border bg-background px-px12 py-px8 text-body text-text-primary placeholder:text-text-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-badge-blue-bg"
               />
             </label>
 
             <button
               type="submit"
               disabled={isSubmitting}
-              className="inline-flex w-full items-center justify-center rounded-micro bg-primary px-5 py-2.5 text-nav-button text-white transition-all duration-150 hover:bg-primary-hover active:scale-[0.98] active:bg-primary-active disabled:cursor-not-allowed disabled:opacity-70"
+              className="inline-flex w-full items-center justify-center rounded-micro bg-primary px-px24 py-px12 text-nav-button font-semibold text-white transition-all duration-150 hover:bg-primary-hover active:scale-[0.97] active:bg-primary-active disabled:cursor-not-allowed disabled:opacity-70"
             >
               {isSubmitting ? 'Signing in...' : 'Sign in as Faculty'}
             </button>
           </form>
 
-          <div className="mt-4 space-y-2">
+          <div className="mt-px16 space-y-px8">
             {errorMessage ? (
-              <p className="rounded-standard border border-warning/25 bg-warning-bg px-3 py-2 text-caption text-warning">
+              <p className="rounded-standard border border-warning/25 bg-warning-bg px-px12 py-px8 text-caption font-medium text-warning">
                 {errorMessage}
               </p>
             ) : null}
 
             {infoMessage ? (
-              <p className="rounded-standard border border-border bg-background-alt px-3 py-2 text-caption text-text-secondary">
+              <p className="rounded-standard border border-border bg-background-alt px-px12 py-px8 text-caption font-medium text-text-secondary">
                 {infoMessage}
               </p>
             ) : null}
 
             {successMessage ? (
-              <p className="rounded-standard border border-success/25 bg-success-bg px-3 py-2 text-caption text-success">
+              <p className="rounded-standard border border-success/25 bg-success-bg px-px12 py-px8 text-caption font-medium text-success">
                 {successMessage}
               </p>
             ) : null}

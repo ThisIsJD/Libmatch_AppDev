@@ -14,6 +14,16 @@ NOUN_CHUNK_WEIGHT = 1.0
 ENTITY_WEIGHT = 1.5
 MAX_TOPIC_WORDS = 8
 MIN_STRUCTURED_TOPICS = 3
+KEYWORD_POS_TAGS = {"NOUN", "PROPN", "VERB", "ADJ"}
+KEYWORD_WEIGHT_MAP = {
+    "PROPN": 2.0,
+    "NOUN": 1.5,
+    "ADJ": 1.2,
+    "VERB": 1.0,
+}
+MIN_KEYWORD_TEXT_LEN = 3
+DEFAULT_MIN_KEYWORDS = 3
+DEFAULT_MAX_KEYWORDS = 4
 
 COURSE_COVERAGE_MARKERS = (
     "course coverage",
@@ -97,6 +107,92 @@ def extract_topics(text: str, limit: int = 20) -> list[dict[str, str | float]]:
         }
         for topic_text, score in ranked_topics[:limit]
     ]
+
+
+def extract_keywords_for_topic(
+    topic_text: str,
+    raw_text: str | None = None,
+    min_keywords: int = DEFAULT_MIN_KEYWORDS,
+    max_keywords: int = DEFAULT_MAX_KEYWORDS,
+) -> list[dict[str, str | float]]:
+    """Extract representative keywords for one topic phrase."""
+    if max_keywords <= 0:
+        return []
+
+    normalized_topic = _normalize_input_text(topic_text)
+    if not normalized_topic:
+        return []
+
+    target_minimum = min(max(min_keywords, 0), max_keywords)
+    keyword_scores: dict[str, dict[str, str | float]] = {}
+    nlp = get_nlp()
+
+    _collect_keyword_scores(nlp(normalized_topic), keyword_scores)
+
+    if len(keyword_scores) < target_minimum and raw_text:
+        context_text = _topic_context_text(normalized_topic, raw_text)
+        if context_text:
+            _collect_keyword_scores(nlp(context_text), keyword_scores)
+
+    ranked_keywords = sorted(
+        keyword_scores.values(),
+        key=lambda keyword: (-float(keyword["score"]), str(keyword["keyword_text"])),
+    )[:max_keywords]
+    if not ranked_keywords:
+        return []
+
+    total_score = sum(float(keyword["score"]) for keyword in ranked_keywords)
+    return [
+        {
+            "keyword_text": str(keyword["keyword_text"]),
+            "weight": round(float(keyword["score"]) / total_score, 4),
+        }
+        for keyword in ranked_keywords
+    ]
+
+
+def _collect_keyword_scores(
+    doc: Doc,
+    keyword_scores: dict[str, dict[str, str | float]],
+) -> None:
+    for token in doc:
+        if token.pos_ not in KEYWORD_POS_TAGS:
+            continue
+        if token.is_stop or token.is_punct or token.is_space or token.like_num:
+            continue
+
+        lemma = token.lemma_.casefold().strip()
+        if len(lemma) < MIN_KEYWORD_TEXT_LEN or not re.search(r"[a-z]", lemma):
+            continue
+
+        display_text = token.text.casefold().strip()
+        if not display_text:
+            continue
+
+        score = KEYWORD_WEIGHT_MAP.get(token.pos_, 1.0)
+        existing = keyword_scores.get(lemma)
+        if existing:
+            existing["score"] = float(existing["score"]) + score
+        else:
+            keyword_scores[lemma] = {
+                "keyword_text": display_text,
+                "score": score,
+            }
+
+
+def _topic_context_text(topic_text: str, raw_text: str, max_sentences: int = 3) -> str:
+    normalized_topic = topic_text.casefold()
+    if not normalized_topic:
+        return ""
+
+    sentence_candidates = re.split(r"(?<=[.!?])\s+|\n+", raw_text)
+    matches = [
+        sentence.strip()
+        for sentence in sentence_candidates
+        if normalized_topic in sentence.casefold()
+    ]
+
+    return " ".join(matches[:max_sentences])
 
 
 def _collect_topic_scores(doc: Doc) -> dict[str, float]:
