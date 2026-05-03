@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { apiClient } from '../api/client.js'
+import SkeletonBlock from './atoms/SkeletonBlock.jsx'
 
 function formatUploadDate(rawDate) {
   const parsed = new Date(rawDate)
@@ -133,8 +134,20 @@ function SyllabusViewerModal({ isOpen, syllabus, onClose }) {
 
         <div className="overflow-y-auto p-px24">
           {isLoading ? (
-            <div className="rounded-standard border border-border bg-background-alt p-px16 text-caption text-text-secondary">
-              Loading preview...
+            <div
+              role="status"
+              aria-label="Loading syllabus preview"
+              data-testid="syllabus-preview-skeleton"
+              className="rounded-standard border border-border bg-background-alt p-px16"
+            >
+              <div className="space-y-px8">
+                <SkeletonBlock className="h-px16 w-[92%]" />
+                <SkeletonBlock className="h-px16 w-full" />
+                <SkeletonBlock className="h-px16 w-[88%]" />
+                <SkeletonBlock className="h-px16 w-[95%]" />
+                <SkeletonBlock className="h-px16 w-[76%]" />
+                <SkeletonBlock className="h-px16 w-[84%]" />
+              </div>
             </div>
           ) : (
             <pre className="max-h-[52vh] whitespace-pre-wrap rounded-standard border border-border bg-background-alt p-px16 font-sans text-caption-light leading-[1.6] text-text-secondary">

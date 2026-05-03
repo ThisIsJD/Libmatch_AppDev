@@ -5,7 +5,10 @@ import uuid
 from fastapi import APIRouter
 from fastapi import Depends
 from fastapi import HTTPException
+from fastapi import Query
 from fastapi import status
+from sqlalchemy import func
+from sqlalchemy import or_
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -51,6 +54,36 @@ def create_course(
     db.commit()
     db.refresh(course)
     return CourseRead.model_validate(course)
+
+
+@router.get("/search", response_model=list[CourseRead])
+def search_courses(
+    q: str = Query(default="", max_length=255),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[CourseRead]:
+    search_query = q.strip()
+    if not search_query:
+        return []
+
+    # Full text search handles stemmed words while ILIKE handles partial tokens
+    # such as "CS" matching "CS101" and "math" matching "MATH311L".
+    ts_query = func.plainto_tsquery("english", search_query)
+    like_pattern = f"%{search_query}%"
+    stmt = (
+        select(Course)
+        .where(
+            Course.created_by == current_user.id,
+            or_(
+                Course.search_vector.op("@@")(ts_query),
+                Course.course_code.ilike(like_pattern),
+                Course.course_title.ilike(like_pattern),
+            ),
+        )
+        .order_by(Course.created_at.desc())
+    )
+    courses = db.execute(stmt).scalars().all()
+    return [CourseRead.model_validate(course) for course in courses]
 
 
 @router.get("/{course_id}", response_model=CourseRead)

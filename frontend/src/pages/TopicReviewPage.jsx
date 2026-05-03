@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { apiClient } from '../api/client'
 import NavBar from '../components/NavBar'
 import SyllabusViewerModal from '../components/SyllabusViewerModal'
+import TopicReviewSkeleton from '../components/templates/TopicReviewSkeleton'
 
 function TopicMatchBadge({ isConfirmed }) {
   const label = isConfirmed ? 'Matched' : 'Pending'
@@ -71,14 +72,6 @@ function ArrowUpTrayIcon() {
   )
 }
 
-function LockIcon() {
-  return (
-    <svg className="h-[14px] w-[14px]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M16.5 10.5V7.875a4.5 4.5 0 0 0-9 0V10.5M6 10.5h12A1.5 1.5 0 0 1 19.5 12v7.5A1.5 1.5 0 0 1 18 21H6A1.5 1.5 0 0 1 4.5 19.5V12A1.5 1.5 0 0 1 6 10.5Z" />
-    </svg>
-  )
-}
-
 const TopicReviewPage = () => {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -91,6 +84,7 @@ const TopicReviewPage = () => {
   const [editingTopicIndex, setEditingTopicIndex] = useState(null)
   const [activeMenuIndex, setActiveMenuIndex] = useState(null)
   const [isRawTextOpen, setIsRawTextOpen] = useState(false)
+  const storedUser = JSON.parse(localStorage.getItem('libmatch_user'))
 
   useEffect(() => {
     const fetchData = async () => {
@@ -184,7 +178,24 @@ const TopicReviewPage = () => {
     }
   }
 
-  if (loading) return <div className="p-8 text-center">Loading...</div>
+  const handleSignOut = () => {
+    localStorage.removeItem('libmatch_access_token')
+    localStorage.removeItem('libmatch_user')
+    navigate('/login')
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background-alt font-sans">
+        <NavBar user={storedUser} onSignOut={handleSignOut} />
+
+        <main className="mx-auto max-w-[1200px] px-px16 py-px32 sm:px-px32 lg:px-px32 lg:py-px32">
+          <TopicReviewSkeleton />
+        </main>
+      </div>
+    )
+  }
+
   if (error) return <div className="p-8 text-center text-red-600">{error}</div>
 
   const confirmedCount = topics.filter((topic) => topic.is_confirmed).length
@@ -193,11 +204,7 @@ const TopicReviewPage = () => {
 
   return (
     <div className="min-h-screen bg-background-alt font-sans">
-      <NavBar user={JSON.parse(localStorage.getItem('libmatch_user'))} onSignOut={() => {
-        localStorage.removeItem('libmatch_access_token');
-        localStorage.removeItem('libmatch_user');
-        navigate('/login');
-      }} />
+      <NavBar user={storedUser} onSignOut={handleSignOut} />
       
       <main className="mx-auto max-w-[1200px] px-px16 py-px32 sm:px-px32 lg:px-px32 lg:py-px32">
         {/* Breadcrumbs / Back */}

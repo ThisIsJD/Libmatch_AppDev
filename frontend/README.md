@@ -1,16 +1,54 @@
-# React + Vite
+# LibMatch Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Vite frontend for the LibMatch AppDev project. Provides faculty login, protected dashboard, syllabus upload modal, topic review, and inline course search.
 
-Currently, two official plugins are available:
+## Requirements
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Node.js 20+
+- Backend API running on `http://localhost:8000`
 
-## React Compiler
+## Setup
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```powershell
+cd frontend
+npm install
+```
 
-## Expanding the ESLint configuration
+Optional `frontend/.env`:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```env
+VITE_API_BASE_URL=http://localhost:8000
+```
+
+If the variable is omitted, the app defaults to `http://localhost:8000`.
+
+## Run
+
+```powershell
+npm run dev
+```
+
+Open the printed Vite URL, usually `http://localhost:5173`. If that port is occupied, Vite will use the next available port.
+
+Seed login:
+
+- Email: `faculty@libmatch.dev`
+- Password: `libmatch123`
+
+## Test
+
+```powershell
+npm test
+```
+
+## Build
+
+```powershell
+npm run build
+```
+
+## Notes
+
+- Cataloger and Librarian role tabs are visible placeholders for Capstone.
+- Search is debounced at 300ms and calls `GET /courses/search?q=`.
+- Chapter matching, citations, and export are disabled AppDev placeholders.

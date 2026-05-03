@@ -126,4 +126,18 @@ describe('TopicReviewPage', () => {
       expect(apiClient.put).toHaveBeenCalledWith('/syllabi/1/topics', expect.any(Array))
     })
   })
+
+  test('shows topic review skeleton while page data is loading', () => {
+    apiClient.get.mockImplementation(() => new Promise(() => {}))
+
+    render(
+      <MemoryRouter initialEntries={['/syllabi/1/topics']}>
+        <Routes>
+          <Route path="/syllabi/:id/topics" element={<TopicReviewPage />} />
+        </Routes>
+      </MemoryRouter>
+    )
+
+    expect(screen.getByTestId('topic-review-skeleton')).toBeDefined()
+  })
 })

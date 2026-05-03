@@ -3,11 +3,20 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { apiClient } from '../api/client.js'
+import SkeletonBlock from '../components/atoms/SkeletonBlock.jsx'
+import SyllabusCardSkeleton from '../components/molecules/SyllabusCardSkeleton.jsx'
 import NavBar from '../components/NavBar.jsx'
 import SearchBar from '../components/SearchBar.jsx'
 import SyllabusCard from '../components/SyllabusCard.jsx'
 import UploadModal from '../components/UploadModal.jsx'
 import { clearSession, getStoredUser } from '../lib/authSession.js'
+
+const loadingSyllabusKeys = [
+  'loading-syllabus-1',
+  'loading-syllabus-2',
+  'loading-syllabus-3',
+  'loading-syllabus-4',
+]
 
 function DashboardPage() {
   const navigate = useNavigate()
@@ -16,11 +25,16 @@ function DashboardPage() {
   const [courses, setCourses] = useState([])
   const [syllabi, setSyllabi] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
+  const [searchedCourseIds, setSearchedCourseIds] = useState(null)
   const [statusFilter, setStatusFilter] = useState('all')
   const [isLoading, setIsLoading] = useState(true)
+  const [isSearchLoading, setIsSearchLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const [infoMessage, setInfoMessage] = useState('')
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
+  const trimmedSearchQuery = searchQuery.trim()
+  const hasActiveSearchQuery = trimmedSearchQuery.length >= 2
+  const isGalleryLoading = isLoading || (hasActiveSearchQuery && isSearchLoading)
 
   useEffect(() => {
     let isMounted = true
@@ -69,25 +83,86 @@ function DashboardPage() {
     }
   }, [])
 
-  const filteredSyllabi = useMemo(() => {
-    const needle = searchQuery.trim().toLowerCase()
+  useEffect(() => {
+    if (!hasActiveSearchQuery) {
+      return undefined
+    }
 
+    let isCurrentSearch = true
+
+    const searchTimer = window.setTimeout(async () => {
+      try {
+        const response = await apiClient.get('/courses/search', {
+          params: { q: trimmedSearchQuery },
+        })
+
+        if (!isCurrentSearch) {
+          return
+        }
+
+        const nextCourseIds = new Set(
+          Array.isArray(response.data) ? response.data.map((course) => course.id) : [],
+        )
+        setSearchedCourseIds(nextCourseIds)
+        setErrorMessage('')
+      } catch (error) {
+        if (!isCurrentSearch) {
+          return
+        }
+
+        if (axios.isAxiosError(error) && error.response) {
+          const detail =
+            typeof error.response.data?.detail === 'string'
+              ? error.response.data.detail
+              : 'Search failed. Please try again.'
+          setErrorMessage(detail)
+        } else {
+          setErrorMessage('Search failed. Check if backend API is running.')
+        }
+        setSearchedCourseIds(new Set())
+      } finally {
+        if (isCurrentSearch) {
+          setIsSearchLoading(false)
+        }
+      }
+    }, 300)
+
+    return () => {
+      isCurrentSearch = false
+      window.clearTimeout(searchTimer)
+    }
+  }, [hasActiveSearchQuery, trimmedSearchQuery])
+
+  const filteredSyllabi = useMemo(() => {
     return syllabi.filter((row) => {
+      if (
+        hasActiveSearchQuery &&
+        searchedCourseIds !== null &&
+        !searchedCourseIds.has(row.course_id)
+      ) {
+        return false
+      }
+
       const matchesStatus = statusFilter === 'all' || row.status === statusFilter
       if (!matchesStatus) {
         return false
       }
 
-      if (!needle) {
-        return true
-      }
-
-      const haystack = [row.file_name, row.course?.course_code, row.course?.course_title]
-      return haystack.some(
-        (value) => typeof value === 'string' && value.toLowerCase().includes(needle),
-      )
+      return true
     })
-  }, [searchQuery, statusFilter, syllabi])
+  }, [hasActiveSearchQuery, searchedCourseIds, statusFilter, syllabi])
+
+  function handleSearchQueryChange(nextSearchQuery) {
+    setSearchQuery(nextSearchQuery)
+
+    if (nextSearchQuery.trim().length < 2) {
+      setSearchedCourseIds(null)
+      setIsSearchLoading(false)
+      return
+    }
+
+    setIsSearchLoading(true)
+  }
 
   function handleSignOut() {
     clearSession()
@@ -131,7 +206,7 @@ function DashboardPage() {
 
         <SearchBar
           value={searchQuery}
-          onChange={setSearchQuery}
+          onChange={handleSearchQueryChange}
           filterValue={statusFilter}
           onFilterChange={setStatusFilter}
           onUploadClick={() => {
@@ -163,16 +238,20 @@ function DashboardPage() {
 
         <section className="mt-px32">
           <div className="mb-px12 flex items-center justify-between">
-            {searchQuery.trim() ? (
+            {isGalleryLoading ? (
+              <SkeletonBlock className="h-px12 w-[60px]" />
+            ) : trimmedSearchQuery ? (
               <p className="text-caption text-text-secondary">
                 {filteredSyllabi.length} result{filteredSyllabi.length === 1 ? '' : 's'}
               </p>
             ) : null}
           </div>
 
-          {isLoading ? (
-            <div className="rounded-large border border-border bg-surface p-px24 text-caption text-text-secondary shadow-card">
-              Loading dashboard data...
+          {isGalleryLoading ? (
+            <div className="grid grid-cols-1 gap-px20 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {loadingSyllabusKeys.map((skeletonKey) => (
+                <SyllabusCardSkeleton key={skeletonKey} />
+              ))}
             </div>
           ) : filteredSyllabi.length > 0 ? (
             <div className="grid grid-cols-1 gap-px20 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -188,9 +267,13 @@ function DashboardPage() {
             </div>
           ) : (
             <div className="rounded-large border border-border bg-surface p-px24 shadow-card">
-              <p className="text-body-semibold font-semibold text-text-primary">No syllabus uploads yet.</p>
+              <p className="text-body-semibold font-semibold text-text-primary">
+                {trimmedSearchQuery ? 'No syllabi match your search.' : 'No syllabus uploads yet.'}
+              </p>
               <p className="mt-px8 text-caption-light text-text-secondary">
-                Click Upload Syllabus to add your first PDF or DOCX file.
+                {trimmedSearchQuery
+                  ? 'Try a different keyword or clear the search.'
+                  : 'Click Upload Syllabus to add your first PDF or DOCX file.'}
               </p>
             </div>
           )}
