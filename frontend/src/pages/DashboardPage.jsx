@@ -22,7 +22,6 @@ function DashboardPage() {
   const navigate = useNavigate()
 
   const user = useMemo(() => getStoredUser(), [])
-  const [courses, setCourses] = useState([])
   const [syllabi, setSyllabi] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
   const [searchedCourseIds, setSearchedCourseIds] = useState(null)
@@ -44,8 +43,7 @@ function DashboardPage() {
       setErrorMessage('')
 
       try {
-        const [coursesResponse, syllabiResponse] = await Promise.all([
-          apiClient.get('/courses'),
+        const [syllabiResponse] = await Promise.all([
           apiClient.get('/syllabi'),
         ])
 
@@ -53,7 +51,6 @@ function DashboardPage() {
           return
         }
 
-        setCourses(Array.isArray(coursesResponse.data) ? coursesResponse.data : [])
         setSyllabi(Array.isArray(syllabiResponse.data) ? syllabiResponse.data : [])
       } catch (error) {
         if (!isMounted) {
@@ -218,7 +215,6 @@ function DashboardPage() {
         {isUploadModalOpen ? (
           <UploadModal
             isOpen={isUploadModalOpen}
-            courses={courses}
             onClose={() => setIsUploadModalOpen(false)}
             onUploadSuccess={handleUploadSuccess}
           />

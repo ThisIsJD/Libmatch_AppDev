@@ -53,12 +53,8 @@ const mockSyllabi = [
   },
 ]
 
-function mockDashboardRequests({ syllabi = mockSyllabi, searchResults = [mockCourses[1]] } = {}) {
+function mockDashboardRequests({ syllabi = mockSyllabi, searchResults = [mockSyllabi[1].course] } = {}) {
   apiClient.get.mockImplementation((url, config) => {
-    if (url === '/courses') {
-      return Promise.resolve({ data: mockCourses })
-    }
-
     if (url === '/syllabi') {
       return Promise.resolve({ data: syllabi })
     }
@@ -148,7 +144,7 @@ describe('DashboardPage', () => {
 
   test('shows syllabus card skeletons while dashboard data is loading', () => {
     apiClient.get.mockImplementation((url) => {
-      if (url === '/courses' || url === '/syllabi') {
+      if (url === '/syllabi') {
         return new Promise(() => {})
       }
 

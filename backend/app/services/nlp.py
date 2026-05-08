@@ -24,6 +24,12 @@ KEYWORD_WEIGHT_MAP = {
 MIN_KEYWORD_TEXT_LEN = 3
 DEFAULT_MIN_KEYWORDS = 3
 DEFAULT_MAX_KEYWORDS = 4
+COURSE_INFO_MAX_LENGTHS = {
+    "course_code": 20,
+    "course_title": 255,
+    "department": 100,
+    "semester": 20,
+}
 
 COURSE_COVERAGE_MARKERS = (
     "course coverage",
@@ -54,6 +60,34 @@ BULLET_TOPIC_PATTERN = re.compile(
 )
 
 LEADING_BULLET_PATTERN = re.compile(r"^(?:[-*•●]+\s*|\d+[.)]\s*)+")
+
+MARKDOWN_FORMATTING_PATTERN = re.compile(r"[*_`]+")
+HTML_BREAK_PATTERN = re.compile(r"<br\s*/?>", flags=re.IGNORECASE)
+COURSE_DETAILS_START_PATTERN = re.compile(r"course\s+details", flags=re.IGNORECASE)
+COURSE_DETAILS_END_PATTERN = re.compile(
+    r"course\s+outcomes|course\s+coverage|program\s+outcomes|effectivity",
+    flags=re.IGNORECASE,
+)
+COURSE_CODE_PATTERN = re.compile(
+    r"\bcourse\s+no\.?\s*[:|\-]?\s*([A-Z]{2,6}\s*\d{2,6}[A-Z]?)\b",
+    flags=re.IGNORECASE,
+)
+COURSE_TITLE_PATTERN = re.compile(
+    r"\bcourse\s+title\s*[:|\-]?\s*([^\n|]+)",
+    flags=re.IGNORECASE,
+)
+COURSE_DESCRIPTION_PATTERN = re.compile(
+    r"\bcourse\s+description\s*[:|\-]?\s*(.+?)(?=\n\s*(?:credit|contact\s+hours|pre[-\s]?requisites|classification|cmo|syllabus\s+revision|year\s+level|term)\b|$)",
+    flags=re.IGNORECASE | re.DOTALL,
+)
+COURSE_DEPARTMENT_PATTERN = re.compile(
+    r"\bclassification(?:/field)?\s*[:|\-]?\s*([^\n|]+)",
+    flags=re.IGNORECASE,
+)
+COURSE_SEMESTER_PATTERN = re.compile(
+    r"\bterm\s*[:|\-]?\s*([^\n|]+)",
+    flags=re.IGNORECASE,
+)
 
 
 @lru_cache
@@ -149,6 +183,182 @@ def extract_keywords_for_topic(
         }
         for keyword in ranked_keywords
     ]
+
+
+def extract_course_info(text: str) -> dict[str, str]:
+    """Extract course metadata from a UNC-style course details section."""
+    try:
+        course_details_text = _slice_course_details(text)
+        if not course_details_text:
+            return {}
+
+        course_rows = _extract_course_detail_rows(course_details_text)
+        extracted_fields = {
+            "course_code": _extract_course_code(course_details_text, course_rows),
+            "course_title": _extract_course_title(course_details_text, course_rows),
+            "description": _extract_course_description(course_details_text, course_rows),
+            "department": _extract_course_department(course_details_text, course_rows),
+            "semester": _extract_course_semester(course_details_text, course_rows),
+        }
+
+        return {
+            field_name: field_value
+            for field_name, field_value in extracted_fields.items()
+            if field_value
+        }
+    except Exception:
+        return {}
+
+
+def _extract_course_code(text: str, rows: dict[str, list[str]]) -> str | None:
+    value = _validated_course_info_value("course_code", _row_value(rows, "course no"))
+    if value:
+        return value.upper().replace(" ", "")
+
+    match = COURSE_CODE_PATTERN.search(text)
+    if not match:
+        return None
+
+    value = _validated_course_info_value("course_code", match.group(1))
+    return value.upper().replace(" ", "") if value else None
+
+
+def _extract_course_title(text: str, rows: dict[str, list[str]]) -> str | None:
+    value = _row_value(rows, "course title")
+    if not value:
+        match = COURSE_TITLE_PATTERN.search(text)
+        value = match.group(1) if match else None
+
+    return _validated_course_info_value("course_title", value)
+
+
+def _extract_course_description(text: str, rows: dict[str, list[str]]) -> str | None:
+    description_parts: list[str] = []
+    description_started = False
+
+    for row in rows.values():
+        if row and _normalize_course_label(row[-1]) == "course description":
+            description_started = True
+            continue
+
+        if not description_started or len(row) < 3:
+            continue
+
+        description_cell = row[2]
+        if _is_course_description_noise(description_cell):
+            continue
+        if description_cell:
+            description_parts.append(description_cell)
+
+    value = " ".join(description_parts)
+    if not value:
+        match = COURSE_DESCRIPTION_PATTERN.search(text)
+        value = match.group(1) if match else None
+
+    return _clean_course_info_value(value)
+
+
+def _extract_course_department(text: str, rows: dict[str, list[str]]) -> str | None:
+    value = _row_value(rows, "classification/field") or _row_value(rows, "classification")
+    if not value:
+        match = COURSE_DEPARTMENT_PATTERN.search(text)
+        value = match.group(1) if match else None
+
+    return _validated_course_info_value("department", value)
+
+
+def _extract_course_semester(text: str, rows: dict[str, list[str]]) -> str | None:
+    value = _row_value(rows, "term")
+    if not value:
+        match = COURSE_SEMESTER_PATTERN.search(text)
+        value = match.group(1) if match else None
+
+    return _validated_course_info_value("semester", value)
+
+
+def _slice_course_details(text: str) -> str:
+    if not text or not text.strip():
+        return ""
+
+    start_match = COURSE_DETAILS_START_PATTERN.search(text)
+    if not start_match:
+        return ""
+
+    end_match = COURSE_DETAILS_END_PATTERN.search(text, start_match.end())
+    end_index = end_match.start() if end_match else len(text)
+    return text[start_match.end():end_index]
+
+
+def _extract_course_detail_rows(text: str) -> dict[str, list[str]]:
+    rows: dict[str, list[str]] = {}
+
+    for line in text.splitlines():
+        cells = _split_markdown_table_row(line)
+        if len(cells) < 2:
+            continue
+
+        label = _normalize_course_label(cells[0])
+        if label:
+            rows[label] = cells
+
+    return rows
+
+
+def _split_markdown_table_row(line: str) -> list[str]:
+    stripped = line.strip()
+    if not stripped.startswith("|"):
+        return []
+    if re.fullmatch(r"\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?", stripped):
+        return []
+
+    return [_clean_course_info_value(cell) for cell in stripped.strip("|").split("|")]
+
+
+def _is_course_description_noise(value: str) -> bool:
+    normalized = _normalize_course_label(value)
+    return (
+        not normalized
+        or normalized == "legend"
+        or normalized.startswith(("i ", "e ", "d "))
+        or "course that" in normalized
+        or "introductory course" in normalized
+        or "demonstrating an outcome" in normalized
+    )
+
+
+def _row_value(rows: dict[str, list[str]], label: str) -> str | None:
+    row = rows.get(_normalize_course_label(label))
+    if not row or len(row) < 2:
+        return None
+    return row[1]
+
+
+def _normalize_course_label(value: str | None) -> str:
+    cleaned = _clean_course_info_value(value)
+    cleaned = cleaned.rstrip(".:")
+    return cleaned.casefold()
+
+
+def _validated_course_info_value(field_name: str, value: str | None) -> str | None:
+    cleaned = _clean_course_info_value(value)
+    if not cleaned:
+        return None
+
+    max_length = COURSE_INFO_MAX_LENGTHS.get(field_name)
+    if max_length and len(cleaned) > max_length:
+        return None
+
+    return cleaned
+
+
+def _clean_course_info_value(value: str | None) -> str:
+    if not value:
+        return ""
+
+    cleaned = HTML_BREAK_PATTERN.sub(" ", value)
+    cleaned = MARKDOWN_FORMATTING_PATTERN.sub("", cleaned)
+    cleaned = " ".join(cleaned.split())
+    return cleaned.strip(" -:;|")
 
 
 def _collect_keyword_scores(

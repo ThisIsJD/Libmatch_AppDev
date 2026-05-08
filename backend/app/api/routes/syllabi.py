@@ -24,6 +24,7 @@ from app.models.topic import Topic
 from app.models.user import User
 from app.schemas.syllabus import SyllabusRead
 from app.services.extractor import extract_text
+from app.services.nlp import extract_course_info
 from app.services.nlp import extract_keywords_for_topic
 from app.services.nlp import extract_topics
 from app.services.storage import infer_file_type
@@ -70,22 +71,25 @@ def get_syllabus(
 
 @router.post("/upload", response_model=SyllabusRead, status_code=status.HTTP_201_CREATED)
 def upload_syllabus(
-    course_id: uuid.UUID = Form(...),
+    course_id: uuid.UUID | None = Form(None),
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> SyllabusRead:
-    course = db.execute(
-        select(Course).where(
-            Course.id == course_id,
-            Course.created_by == current_user.id,
-        )
-    ).scalar_one_or_none()
-    if course is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Course not found",
-        )
+    pre_selected_course: Course | None = None
+
+    if course_id is not None:
+        pre_selected_course = db.execute(
+            select(Course).where(
+                Course.id == course_id,
+                Course.created_by == current_user.id,
+            )
+        ).scalar_one_or_none()
+        if pre_selected_course is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Course not found",
+            )
 
     stored_path: str | None = None
     upload_succeeded = False
@@ -94,6 +98,45 @@ def upload_syllabus(
         stored_path, original_name = save_upload_file(file, settings.upload_dir)
         file_type = infer_file_type(original_name)
         raw_text = extract_text(stored_path, file_type)
+        extracted_course_fields = extract_course_info(raw_text)
+
+        if pre_selected_course is not None:
+            # Update the pre-selected course with any extracted fields.
+            for field_name, field_value in extracted_course_fields.items():
+                setattr(pre_selected_course, field_name, field_value)
+            if extracted_course_fields:
+                db.flush()
+            course = pre_selected_course
+        else:
+            # Auto-detect: find an existing course by extracted code, or create one.
+            extracted_code = extracted_course_fields.get("course_code")
+            detected_course: Course | None = None
+
+            if extracted_code:
+                detected_course = db.execute(
+                    select(Course).where(
+                        Course.course_code == extracted_code,
+                        Course.created_by == current_user.id,
+                    )
+                ).scalar_one_or_none()
+
+            if detected_course is not None:
+                for field_name, field_value in extracted_course_fields.items():
+                    setattr(detected_course, field_name, field_value)
+                db.flush()
+                course = detected_course
+            else:
+                course = Course(
+                    course_code=extracted_course_fields.get("course_code") or "UNKNOWN",
+                    course_title=extracted_course_fields.get("course_title") or "Untitled Course",
+                    description=extracted_course_fields.get("description"),
+                    department=extracted_course_fields.get("department"),
+                    semester=extracted_course_fields.get("semester"),
+                    created_by=current_user.id,
+                )
+                db.add(course)
+                db.flush()
+
         topic_suggestions = extract_topics(raw_text, limit=25)
 
         syllabus = Syllabus(

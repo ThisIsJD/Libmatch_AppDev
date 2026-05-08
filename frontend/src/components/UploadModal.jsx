@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { apiClient } from '../api/client.js'
 
@@ -18,31 +18,10 @@ function formatFileSize(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
 }
 
-function UploadModal({ isOpen, courses, onClose, onUploadSuccess }) {
-  const [selectedCourseId, setSelectedCourseId] = useState(() => courses[0]?.id ?? '')
-  const [courseQuery, setCourseQuery] = useState(() => {
-    const firstCourse = courses[0]
-    return firstCourse ? `${firstCourse.course_code} - ${firstCourse.course_title}` : ''
-  })
-  const [showCourseSuggestions, setShowCourseSuggestions] = useState(false)
+function UploadModal({ isOpen, onClose, onUploadSuccess }) {
   const [selectedFile, setSelectedFile] = useState(null)
   const [errorMessage, setErrorMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const coursePickerRef = useRef(null)
-
-  const hasCourses = useMemo(() => courses.length > 0, [courses])
-  const activeCourseId = selectedCourseId
-  const filteredCourses = useMemo(() => {
-    const needle = courseQuery.trim().toLowerCase()
-    if (!needle) {
-      return courses
-    }
-
-    return courses.filter((course) => {
-      const haystack = `${course.course_code} ${course.course_title}`.toLowerCase()
-      return haystack.includes(needle)
-    })
-  }, [courseQuery, courses])
 
   useEffect(() => {
     if (!isOpen) {
@@ -60,23 +39,6 @@ function UploadModal({ isOpen, courses, onClose, onUploadSuccess }) {
       window.removeEventListener('keydown', handleEscape)
     }
   }, [isOpen, isSubmitting, onClose])
-
-  useEffect(() => {
-    if (!showCourseSuggestions) {
-      return undefined
-    }
-
-    function handleDocumentMouseDown(event) {
-      if (coursePickerRef.current && !coursePickerRef.current.contains(event.target)) {
-        setShowCourseSuggestions(false)
-      }
-    }
-
-    document.addEventListener('mousedown', handleDocumentMouseDown)
-    return () => {
-      document.removeEventListener('mousedown', handleDocumentMouseDown)
-    }
-  }, [showCourseSuggestions])
 
   if (!isOpen) {
     return null
@@ -110,11 +72,6 @@ function UploadModal({ isOpen, courses, onClose, onUploadSuccess }) {
   async function handleSubmit(event) {
     event.preventDefault()
 
-    if (!activeCourseId) {
-      setErrorMessage('Please select a course before uploading.')
-      return
-    }
-
     if (!selectedFile) {
       setErrorMessage('Please choose a PDF or DOCX file to upload.')
       return
@@ -125,7 +82,6 @@ function UploadModal({ isOpen, courses, onClose, onUploadSuccess }) {
 
     try {
       const formData = new FormData()
-      formData.append('course_id', activeCourseId)
       formData.append('file', selectedFile)
 
       const response = await apiClient.post('/syllabi/upload', formData, {
@@ -169,7 +125,7 @@ function UploadModal({ isOpen, courses, onClose, onUploadSuccess }) {
               Upload New Syllabus
             </h3>
             <p className="mt-px4 text-caption-light text-text-secondary">
-              Upload one PDF or DOCX file and attach it to an existing course.
+              Upload a PDF or DOCX file. Course info is automatically extracted.
             </p>
           </div>
 
@@ -185,54 +141,6 @@ function UploadModal({ isOpen, courses, onClose, onUploadSuccess }) {
         </div>
 
         <form className="mt-px24 space-y-px16" onSubmit={handleSubmit}>
-          <label className="block">
-            <span className="mb-px4 block text-caption font-medium text-text-primary">Course</span>
-            <div ref={coursePickerRef} className="relative">
-              <input
-                type="text"
-                value={courseQuery}
-                onChange={(event) => {
-                  setCourseQuery(event.target.value)
-                  setSelectedCourseId('')
-                  setShowCourseSuggestions(true)
-                }}
-                onFocus={() => setShowCourseSuggestions(true)}
-                placeholder="Type course name or code..."
-                className="w-full rounded-micro border border-border bg-background px-px12 py-px8 text-body text-text-primary placeholder:text-text-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-badge-blue-bg"
-                disabled={!hasCourses || isSubmitting}
-              />
-
-              {showCourseSuggestions && hasCourses ? (
-                <div className="absolute left-0 right-0 top-full z-20 mt-px4 max-h-[184px] overflow-y-auto rounded-standard border border-border bg-surface py-px4 shadow-card">
-                  {filteredCourses.length > 0 ? (
-                    filteredCourses.map((course) => (
-                      <button
-                        key={course.id}
-                        type="button"
-                        className="flex w-full flex-col px-px12 py-px8 text-left transition-colors duration-150 hover:bg-background-alt"
-                        onMouseDown={(event) => event.preventDefault()}
-                        onClick={() => {
-                          setSelectedCourseId(course.id)
-                          setCourseQuery(`${course.course_code} - ${course.course_title}`)
-                          setShowCourseSuggestions(false)
-                          setErrorMessage('')
-                        }}
-                      >
-                        <span className="text-caption font-semibold text-text-primary">{course.course_code}</span>
-                        <span className="text-caption-light text-text-secondary">{course.course_title}</span>
-                      </button>
-                    ))
-                  ) : (
-                    <p className="px-px12 py-px8 text-caption-light text-text-secondary">No matching courses</p>
-                  )}
-                </div>
-              ) : null}
-            </div>
-            <p className="mt-px4 text-micro text-text-muted">
-              Course info will be auto-extracted from uploaded files in a future update.
-            </p>
-          </label>
-
           <div className="relative cursor-pointer overflow-hidden rounded-large border-[1.5px] border-dashed border-border bg-background-alt px-px32 py-px48 text-center transition-all duration-150 hover:border-primary hover:bg-badge-blue-bg">
             <div className="mx-auto mb-px16 flex h-[40px] w-[40px] items-center justify-center rounded-circle bg-[#e8f4ff] text-primary">
               <svg className="h-px24 w-px24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
@@ -255,12 +163,6 @@ function UploadModal({ isOpen, courses, onClose, onUploadSuccess }) {
             </div>
           ) : null}
 
-          {!hasCourses ? (
-            <div className="rounded-standard border border-warning/25 bg-warning-bg px-px12 py-px8 text-caption font-medium text-warning">
-              Add at least one course first before uploading a syllabus.
-            </div>
-          ) : null}
-
           {errorMessage ? (
             <div className="rounded-standard border border-warning/25 bg-warning-bg px-px12 py-px8 text-caption font-medium text-warning">
               {errorMessage}
@@ -270,6 +172,7 @@ function UploadModal({ isOpen, courses, onClose, onUploadSuccess }) {
           <div className="rounded-standard bg-background-alt px-px12 py-px12">
             <p className="text-caption font-semibold text-text-primary">Syllabus Upload Tips:</p>
             <ul className="mt-px8 list-disc space-y-px4 pl-px16 text-[13px] font-normal leading-[1.6] text-text-secondary">
+              <li>Course details are extracted automatically from the file</li>
               <li>Include clear course objectives and topics</li>
               <li>Supported formats: PDF, DOCX</li>
               <li>Max file size: 10MB</li>
@@ -289,7 +192,7 @@ function UploadModal({ isOpen, courses, onClose, onUploadSuccess }) {
             <button
               type="submit"
               className="inline-flex items-center justify-center rounded-micro bg-primary px-px16 py-[10px] text-nav-button font-semibold text-white transition-all duration-150 hover:bg-primary-hover active:scale-[0.97] active:bg-primary-active disabled:cursor-not-allowed disabled:opacity-70"
-              disabled={!activeCourseId || !selectedFile || isSubmitting}
+              disabled={!selectedFile || isSubmitting}
             >
               {isSubmitting ? 'Uploading...' : 'Upload & Process'}
             </button>
