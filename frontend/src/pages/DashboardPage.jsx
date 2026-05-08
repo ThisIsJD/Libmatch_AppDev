@@ -248,13 +248,13 @@ function DashboardPage() {
           </div>
 
           {isGalleryLoading ? (
-            <div className="grid grid-cols-1 gap-px20 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-px24 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {loadingSyllabusKeys.map((skeletonKey) => (
                 <SyllabusCardSkeleton key={skeletonKey} />
               ))}
             </div>
           ) : filteredSyllabi.length > 0 ? (
-            <div className="grid grid-cols-1 gap-px20 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-px24 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {filteredSyllabi.map((syllabus) => (
                 <SyllabusCard
                   key={syllabus.id}
