@@ -8,8 +8,10 @@ from fastapi import Depends
 from fastapi import File
 from fastapi import Form
 from fastapi import HTTPException
+from fastapi import Response
 from fastapi import UploadFile
 from fastapi import status
+from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import selectinload
@@ -22,6 +24,7 @@ from app.models.keyword import Keyword
 from app.models.syllabus import Syllabus
 from app.models.topic import Topic
 from app.models.user import User
+from app.schemas.syllabus import SyllabusListRead
 from app.schemas.syllabus import SyllabusRead
 from app.services.extractor import extract_text
 from app.services.nlp import extract_course_info
@@ -34,11 +37,11 @@ router = APIRouter()
 settings = get_settings()
 
 
-@router.get("", response_model=list[SyllabusRead])
+@router.get("", response_model=list[SyllabusListRead])
 def list_syllabi(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> list[SyllabusRead]:
+) -> list[SyllabusListRead]:
     stmt = (
         select(Syllabus)
         .options(selectinload(Syllabus.course))
@@ -46,7 +49,7 @@ def list_syllabi(
         .order_by(Syllabus.upload_date.desc())
     )
     syllabi = db.execute(stmt).scalars().all()
-    return [SyllabusRead.model_validate(syllabus) for syllabus in syllabi]
+    return [SyllabusListRead.model_validate(syllabus) for syllabus in syllabi]
 
 
 @router.get("/{syllabus_id}", response_model=SyllabusRead)
@@ -67,6 +70,72 @@ def get_syllabus(
             detail="Syllabus not found",
         )
     return SyllabusRead.model_validate(syllabus)
+
+
+@router.get("/{syllabus_id}/file")
+def get_syllabus_file(
+    syllabus_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> FileResponse:
+    syllabus = db.execute(
+        select(Syllabus).where(
+            Syllabus.id == syllabus_id,
+            Syllabus.uploaded_by == current_user.id,
+        )
+    ).scalar_one_or_none()
+    if syllabus is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Syllabus not found",
+        )
+
+    file_path = Path(syllabus.file_path)
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Syllabus file not found",
+        )
+
+    media_type = "application/pdf"
+    if syllabus.file_type == "docx":
+        media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
+    return FileResponse(
+        path=str(file_path),
+        filename=syllabus.file_name,
+        media_type=media_type,
+    )
+
+
+@router.delete(
+    "/{syllabus_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+)
+def delete_syllabus(
+    syllabus_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Response:
+    syllabus = db.execute(
+        select(Syllabus).where(
+            Syllabus.id == syllabus_id,
+            Syllabus.uploaded_by == current_user.id,
+        )
+    ).scalar_one_or_none()
+    if syllabus is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Syllabus not found",
+        )
+
+    file_path = syllabus.file_path
+    db.delete(syllabus)
+    db.commit()
+
+    _delete_uploaded_file(file_path)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/upload", response_model=SyllabusRead, status_code=status.HTTP_201_CREATED)

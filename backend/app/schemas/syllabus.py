@@ -23,6 +23,20 @@ class SyllabusRead(BaseModel):
     course_id: uuid.UUID
     file_name: str
     file_type: str
+    raw_text: str | None = None
+    upload_date: datetime
+    status: str
+    uploaded_by: uuid.UUID
+    course: SyllabusCourseSummary
+
+
+class SyllabusListRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    course_id: uuid.UUID
+    file_name: str
+    file_type: str
     upload_date: datetime
     status: str
     uploaded_by: uuid.UUID

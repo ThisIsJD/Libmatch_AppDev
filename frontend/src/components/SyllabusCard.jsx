@@ -36,7 +36,7 @@ function formatUploadDate(rawDate) {
   }).format(parsed)
 }
 
-function SyllabusCard({ syllabus, onContinueMatching }) {
+function SyllabusCard({ syllabus, onContinueMatching, onSyllabusDeleted }) {
   const [cardDetails, setCardDetails] = useState(() => ({
     fileName: syllabus.file_name ?? '',
     courseTitle: syllabus.course?.course_title ?? syllabus.file_name,
@@ -174,6 +174,7 @@ function SyllabusCard({ syllabus, onContinueMatching }) {
         <SyllabusViewerModal
           isOpen={isViewerOpen}
           syllabus={displaySyllabus}
+          onDelete={onSyllabusDeleted}
           onClose={() => setIsViewerOpen(false)}
         />
       ) : null}

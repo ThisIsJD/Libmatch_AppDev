@@ -187,6 +187,14 @@ function DashboardPage() {
     }
   }
 
+  function handleSyllabusDeleted(deletedSyllabusId) {
+    setSyllabi((currentSyllabi) => {
+      return currentSyllabi.filter((row) => row.id !== deletedSyllabusId)
+    })
+    setErrorMessage('')
+    setInfoMessage('Syllabus deleted successfully.')
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <NavBar user={user} onSignOut={handleSignOut} />
@@ -255,6 +263,7 @@ function DashboardPage() {
                 <SyllabusCard
                   key={syllabus.id}
                   syllabus={syllabus}
+                  onSyllabusDeleted={handleSyllabusDeleted}
                   onContinueMatching={() => {
                     navigate(`/syllabi/${syllabus.id}/topics`)
                   }}

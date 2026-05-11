@@ -292,7 +292,7 @@ const TopicReviewPage = () => {
                   className="inline-flex items-center gap-px4 rounded-micro border border-border bg-background px-px12 py-px8 text-micro font-semibold text-text-secondary transition-colors hover:bg-background-alt hover:text-text-primary"
                 >
                   <DocumentIcon />
-                  View Raw Text
+                  View Syllabus PDF
                 </button>
                 <button 
                   onClick={handleAddTopic}

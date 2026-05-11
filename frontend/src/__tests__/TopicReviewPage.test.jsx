@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { beforeEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import TopicReviewPage from '../pages/TopicReviewPage'
 import { apiClient } from '../api/client'
 
@@ -15,6 +15,7 @@ vi.mock('../api/client', () => ({
 const getMockSyllabus = () => ({
   id: '1',
   file_name: 'test-syllabus.pdf',
+  file_type: 'pdf',
   raw_text: 'Test extracted text',
   upload_date: '2026-05-03T00:00:00Z',
   course: {
@@ -41,10 +42,31 @@ const getMockTopics = () => ([
 describe('TopicReviewPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+
+    if (!URL.createObjectURL) {
+      URL.createObjectURL = () => ''
+    }
+
+    if (!URL.revokeObjectURL) {
+      URL.revokeObjectURL = () => {}
+    }
+
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:topic-review-pdf')
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+
     apiClient.get.mockImplementation((url) => {
       if (url.includes('/topics')) return Promise.resolve({ data: getMockTopics() })
+      if (url.endsWith('/file')) {
+        return Promise.resolve({
+          data: new Blob(['%PDF-1.4'], { type: 'application/pdf' }),
+        })
+      }
       return Promise.resolve({ data: getMockSyllabus() })
     })
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   const getProgressLabel = () => screen.getByText((contentText, elementNode) => (
@@ -91,7 +113,7 @@ describe('TopicReviewPage', () => {
     expect(input.value).toBe('Topic 1 Modified')
   })
 
-  test('View Raw Text opens the syllabus preview modal', async () => {
+  test('View Syllabus PDF opens the syllabus PDF preview modal', async () => {
     render(
       <MemoryRouter initialEntries={['/syllabi/1/topics']}>
         <Routes>
@@ -102,9 +124,9 @@ describe('TopicReviewPage', () => {
 
     await screen.findByRole('button', { name: 'Topic 1' })
 
-    fireEvent.click(screen.getByText('View Raw Text'))
+    fireEvent.click(screen.getByText('View Syllabus PDF'))
 
-    expect(await screen.findByText('Test extracted text')).toBeDefined()
+    expect(await screen.findByTestId('syllabus-pdf-viewer')).toBeDefined()
   })
 
   test('Accept All calls PUT API and navigates', async () => {
