@@ -12,6 +12,9 @@ from app.models.user import User
 DEFAULT_EMAIL = "faculty@libmatch.dev"
 DEFAULT_PASSWORD = "libmatch123"
 DEFAULT_FULL_NAME = "LibMatch Faculty"
+DIRECTOR_EMAIL = "director@libmatch.dev"
+DIRECTOR_PASSWORD = "libmatch123"
+DIRECTOR_FULL_NAME = "LibMatch Director"
 
 SEED_COURSES = [
     {
@@ -81,10 +84,29 @@ def seed() -> None:
             )
             inserted_courses += 1
 
+        director = db.execute(
+            select(User).where(User.email == DIRECTOR_EMAIL)
+        ).scalar_one_or_none()
+        director_created = False
+        if director is None:
+            db.add(
+                User(
+                    email=DIRECTOR_EMAIL,
+                    password_hash=hash_password(DIRECTOR_PASSWORD),
+                    full_name=DIRECTOR_FULL_NAME,
+                    role="director",
+                )
+            )
+            director_created = True
+
         db.commit()
 
         print("Seed complete")
         print(f"- User: {'created' if user_created else 'already exists'} ({email})")
+        print(
+            "- Director: "
+            f"{'created' if director_created else 'already exists'} ({DIRECTOR_EMAIL})"
+        )
         print(f"- Courses inserted: {inserted_courses}")
         print(f"- Courses skipped: {skipped_courses}")
     except Exception:

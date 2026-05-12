@@ -19,7 +19,7 @@ class User(Base):
     __tablename__ = "users"
     __table_args__ = (
         CheckConstraint(
-            "role IN ('faculty', 'cataloger', 'librarian')",
+            "role IN ('faculty', 'cataloger', 'librarian', 'director')",
             name="users_role_valid",
         ),
     )

@@ -1,13 +1,20 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 
-import { getAccessToken } from '../lib/authSession.js'
+import { getAccessToken, getStoredUser } from '../lib/authSession.js'
 
-function ProtectedRoute() {
+function ProtectedRoute({ allowedRoles } = {}) {
   const location = useLocation()
   const token = getAccessToken()
+  const user = getStoredUser()
 
   if (!token) {
     return <Navigate to="/login" replace state={{ from: location }} />
+  }
+
+  if (Array.isArray(allowedRoles) && allowedRoles.length > 0) {
+    if (!user || !allowedRoles.includes(user.role)) {
+      return <Navigate to="/" replace />
+    }
   }
 
   return <Outlet />

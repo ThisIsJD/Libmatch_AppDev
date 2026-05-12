@@ -4,13 +4,17 @@ import { useLocation, useNavigate } from 'react-router-dom'
 
 import { apiClient } from '../api/client.js'
 import RoleTabSelector from '../components/RoleTabSelector.jsx'
-import { getAccessToken, setSession } from '../lib/authSession.js'
+import { getAccessToken, getStoredUser, setSession } from '../lib/authSession.js'
 
 function normalizeApiBaseUrl(rawUrl) {
   if (!rawUrl) {
     return 'http://localhost:8000'
   }
   return rawUrl.endsWith('/') ? rawUrl.slice(0, -1) : rawUrl
+}
+
+function defaultRouteForRole(role) {
+  return role === 'director' ? '/director' : '/'
 }
 
 function LoginPage() {
@@ -21,7 +25,7 @@ function LoginPage() {
     () => normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL),
     [],
   )
-  const redirectTo = location.state?.from?.pathname ?? '/'
+  const redirectTo = location.state?.from?.pathname
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -32,7 +36,8 @@ function LoginPage() {
 
   useEffect(() => {
     if (getAccessToken()) {
-      navigate('/', { replace: true })
+      const storedUser = getStoredUser()
+      navigate(defaultRouteForRole(storedUser?.role), { replace: true })
     }
   }, [navigate])
 
@@ -57,11 +62,15 @@ function LoginPage() {
       const payload = response.data
       setSession(payload.access_token, payload.user)
 
+      const fallbackRoute = defaultRouteForRole(payload.user?.role)
+      const destinationRoute =
+        redirectTo && redirectTo !== '/login' ? redirectTo : fallbackRoute
+
       setSuccessMessage(
         `Welcome back, ${payload.user.full_name}. Login is complete and your session token is stored.`,
       )
       setPassword('')
-      navigate(redirectTo, { replace: true })
+      navigate(destinationRoute, { replace: true })
     } catch (error) {
       if (axios.isAxiosError(error) && error.response) {
         const detail =

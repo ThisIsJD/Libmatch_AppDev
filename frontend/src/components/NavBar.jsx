@@ -18,7 +18,7 @@ function getInitials(name) {
   return segments.map((part) => part[0].toUpperCase()).join('')
 }
 
-function NavBar({ user, onSignOut }) {
+function NavBar({ user, onSignOut, subtitle = 'Faculty Workspace' }) {
   const initials = getInitials(user?.full_name)
 
   return (
@@ -32,7 +32,7 @@ function NavBar({ user, onSignOut }) {
           />
           <div>
             <p className="text-[16px] font-bold text-text-primary">LibMatch</p>
-            <p className="text-micro text-text-secondary">Faculty Workspace</p>
+            <p className="text-micro text-text-secondary">{subtitle}</p>
           </div>
         </div>
 

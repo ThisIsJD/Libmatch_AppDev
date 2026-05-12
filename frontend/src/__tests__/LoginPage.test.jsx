@@ -23,6 +23,7 @@ function renderLoginPage() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/" element={<p>Dashboard loaded</p>} />
+        <Route path="/director" element={<p>Director dashboard loaded</p>} />
       </Routes>
     </MemoryRouter>,
   )
@@ -93,5 +94,35 @@ describe('LoginPage', () => {
     expect(setSession).toHaveBeenCalledWith('token-123', expect.objectContaining({
       email: 'faculty@libmatch.dev',
     }))
+  })
+
+  test('navigates to director dashboard after successful director login', async () => {
+    apiClient.post.mockResolvedValue({
+      data: {
+        access_token: 'token-director',
+        user: {
+          id: 'user-2',
+          full_name: 'Director User',
+          email: 'director@libmatch.dev',
+          role: 'director',
+        },
+      },
+    })
+
+    renderLoginPage()
+
+    fireEvent.change(screen.getByLabelText('Email'), {
+      target: { value: 'director@libmatch.dev' },
+    })
+    fireEvent.change(screen.getByLabelText('Password'), {
+      target: { value: 'libmatch123' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in as Faculty' }))
+
+    expect(await screen.findByText('Director dashboard loaded')).toBeDefined()
+    expect(setSession).toHaveBeenCalledWith(
+      'token-director',
+      expect.objectContaining({ role: 'director' }),
+    )
   })
 })
