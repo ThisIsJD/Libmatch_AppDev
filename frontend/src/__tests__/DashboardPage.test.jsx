@@ -6,6 +6,19 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { apiClient } from '../api/client'
 import DashboardPage from '../pages/DashboardPage'
 
+vi.mock('../components/UploadModal.jsx', () => ({
+  default: function MockUploadModal({ onUploadSuccess, onClose }) {
+    return (
+      <div data-testid="mock-upload-modal">
+        <button type="button" onClick={() => onUploadSuccess({ id: 'syllabus-2' })}>
+          Complete mock upload
+        </button>
+        <button type="button" onClick={onClose}>Close mock upload</button>
+      </div>
+    )
+  },
+}))
+
 vi.mock('../api/client', () => ({
   apiClient: {
     get: vi.fn(),
@@ -154,5 +167,38 @@ describe('DashboardPage', () => {
     renderDashboard()
 
     expect(screen.getAllByLabelText('Loading syllabus')).toHaveLength(4)
+  })
+
+  test('highlights newly uploaded syllabus card after refresh', async () => {
+    const refreshedSyllabi = [mockSyllabi[0], mockSyllabi[1]]
+    let syllabusRequestCount = 0
+
+    apiClient.get.mockImplementation((url, config) => {
+      if (url === '/syllabi') {
+        syllabusRequestCount += 1
+        if (syllabusRequestCount === 1) {
+          return Promise.resolve({ data: [mockSyllabi[0]] })
+        }
+        return Promise.resolve({ data: refreshedSyllabi })
+      }
+
+      if (url === '/courses/search') {
+        return Promise.resolve({ data: [mockSyllabi[1].course], config })
+      }
+
+      return Promise.resolve({ data: [] })
+    })
+
+    renderDashboard()
+
+    expect(await screen.findByText('Fundamentals of Programming')).toBeDefined()
+    expect(screen.queryByText('Linear Algebra Laboratory')).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add Syllabus' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Complete mock upload' }))
+
+    expect(await screen.findByText('Linear Algebra Laboratory')).toBeDefined()
+    expect(await screen.findByTestId('new-upload-badge-syllabus-2')).toBeDefined()
+    expect(screen.getByTestId('syllabus-card-syllabus-2').getAttribute('data-highlighted')).toBe('true')
   })
 })

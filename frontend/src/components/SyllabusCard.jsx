@@ -36,7 +36,7 @@ function formatUploadDate(rawDate) {
   }).format(parsed)
 }
 
-function SyllabusCard({ syllabus, onContinueMatching, onSyllabusDeleted }) {
+function SyllabusCard({ syllabus, onContinueMatching, onSyllabusDeleted, isHighlighted = false }) {
   const [cardDetails, setCardDetails] = useState(() => ({
     fileName: syllabus.file_name ?? '',
     courseTitle: syllabus.course?.course_title ?? syllabus.file_name,
@@ -82,13 +82,29 @@ function SyllabusCard({ syllabus, onContinueMatching, onSyllabusDeleted }) {
   }, [isMenuOpen])
 
   return (
-    <article className="rounded-comfortable border border-border bg-surface p-px24 shadow-card transition-all duration-200 hover:border-[rgba(0,0,0,0.15)] hover:shadow-deep">
+    <article
+      className={`rounded-comfortable border bg-surface p-px24 shadow-card transition-all duration-200 hover:border-[rgba(0,0,0,0.15)] hover:shadow-deep ${
+        isHighlighted
+          ? 'border-primary ring-2 ring-[rgba(0,117,222,0.25)]'
+          : 'border-border'
+      }`}
+      data-testid={`syllabus-card-${syllabus.id}`}
+      data-highlighted={isHighlighted ? 'true' : 'false'}
+    >
       <div className="flex items-start justify-between gap-px12">
         <div className="inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-standard bg-background-alt text-text-secondary">
           <GraduationCapIcon />
         </div>
 
         <div className="flex items-start gap-px4">
+          {isHighlighted ? (
+            <span
+              className="inline-flex items-center rounded-pill border border-primary/20 bg-badge-blue-bg px-px8 py-px4 text-micro font-semibold uppercase tracking-[0.4px] text-primary"
+              data-testid={`new-upload-badge-${syllabus.id}`}
+            >
+              New upload
+            </span>
+          ) : null}
           <StatusBadge status={syllabus.status} />
           <div ref={menuRef} className="relative">
             <button

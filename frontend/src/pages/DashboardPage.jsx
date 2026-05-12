@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { apiClient } from '../api/client.js'
@@ -31,6 +31,8 @@ function DashboardPage() {
   const [errorMessage, setErrorMessage] = useState('')
   const [infoMessage, setInfoMessage] = useState('')
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
+  const [highlightedSyllabusId, setHighlightedSyllabusId] = useState(null)
+  const highlightTimeoutRef = useRef(null)
   const trimmedSearchQuery = searchQuery.trim()
   const hasActiveSearchQuery = trimmedSearchQuery.length >= 2
   const isGalleryLoading = isLoading || (hasActiveSearchQuery && isSearchLoading)
@@ -79,6 +81,25 @@ function DashboardPage() {
       isMounted = false
     }
   }, [])
+
+  useEffect(() => {
+    return () => {
+      if (highlightTimeoutRef.current) {
+        clearTimeout(highlightTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  function scheduleHighlightClear() {
+    if (highlightTimeoutRef.current) {
+      clearTimeout(highlightTimeoutRef.current)
+    }
+
+    highlightTimeoutRef.current = setTimeout(() => {
+      setHighlightedSyllabusId(null)
+      highlightTimeoutRef.current = null
+    }, 6000)
+  }
 
   useEffect(() => {
     if (!hasActiveSearchQuery) {
@@ -166,10 +187,22 @@ function DashboardPage() {
     navigate('/login', { replace: true })
   }
 
-  async function handleUploadSuccess() {
+  async function handleUploadSuccess(uploadedSyllabus) {
     try {
       const syllabiResponse = await apiClient.get('/syllabi')
-      setSyllabi(Array.isArray(syllabiResponse.data) ? syllabiResponse.data : [])
+      const nextSyllabi = Array.isArray(syllabiResponse.data) ? syllabiResponse.data : []
+      setSyllabi(nextSyllabi)
+
+      const uploadedSyllabusId =
+        typeof uploadedSyllabus?.id === 'string' ? uploadedSyllabus.id : null
+      const uploadedSyllabusExists = nextSyllabi.some((row) => row.id === uploadedSyllabusId)
+      const syllabusToHighlight = uploadedSyllabusExists ? uploadedSyllabusId : nextSyllabi[0]?.id
+
+      if (syllabusToHighlight) {
+        setHighlightedSyllabusId(syllabusToHighlight)
+        scheduleHighlightClear()
+      }
+
       setErrorMessage('')
       setInfoMessage('Syllabus uploaded and processed successfully.')
       setIsUploadModalOpen(false)
@@ -193,6 +226,14 @@ function DashboardPage() {
     })
     setErrorMessage('')
     setInfoMessage('Syllabus deleted successfully.')
+
+    if (deletedSyllabusId === highlightedSyllabusId) {
+      setHighlightedSyllabusId(null)
+      if (highlightTimeoutRef.current) {
+        clearTimeout(highlightTimeoutRef.current)
+        highlightTimeoutRef.current = null
+      }
+    }
   }
 
   return (
@@ -263,6 +304,7 @@ function DashboardPage() {
                 <SyllabusCard
                   key={syllabus.id}
                   syllabus={syllabus}
+                  isHighlighted={highlightedSyllabusId === syllabus.id}
                   onSyllabusDeleted={handleSyllabusDeleted}
                   onContinueMatching={() => {
                     navigate(`/syllabi/${syllabus.id}/topics`)
