@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
@@ -37,8 +37,31 @@ function mockAnalyticsRequests({ frequencyItems } = {}) {
       })
     }
 
+    if (url === '/analytics/director/departments/upload-stats') {
+      return Promise.resolve({
+        data: [
+          { department: 'Computer Science', syllabus_count: 7 },
+          { department: 'Mathematics', syllabus_count: 3 },
+        ],
+      })
+    }
+
     if (url === '/analytics/topics/frequency') {
       return Promise.resolve({ data: { items: values } })
+    }
+
+    if (url === '/analytics/director/topics/courses') {
+      return Promise.resolve({
+        data: [
+          {
+            course_id: 'course-1',
+            course_code: 'CS101',
+            course_title: 'Course CS101',
+            department: 'Computer Science',
+            syllabus_id: 'syllabus-1',
+          },
+        ],
+      })
     }
 
     return Promise.resolve({ data: {} })
@@ -59,10 +82,10 @@ describe('DirectorDashboard', () => {
     mockAnalyticsRequests()
   })
 
-  test('renders chart container when analytics data loads', async () => {
+  test('renders topic frequency table when analytics data loads', async () => {
     renderDirectorDashboard()
 
-    expect(await screen.findByLabelText('Topic frequency chart')).toBeDefined()
+    expect(await screen.findByLabelText('Topic frequency table')).toBeDefined()
   })
 
   test('populates department filter from analytics filters endpoint', async () => {
@@ -121,5 +144,76 @@ describe('DirectorDashboard', () => {
         limit: 20,
       },
     })
+  })
+
+  test('refetches frequency data when topic limit changes', async () => {
+    renderDirectorDashboard()
+
+    const topicLimitSelect = await screen.findByLabelText('Topic Limit')
+    fireEvent.change(topicLimitSelect, { target: { value: '50' } })
+
+    expect(apiClient.get).toHaveBeenCalledWith('/analytics/topics/frequency', {
+      params: {
+        course_level: '',
+        department: '',
+        limit: 50,
+      },
+    })
+  })
+
+  test('filters topic rows when topic search is used', async () => {
+    renderDirectorDashboard()
+
+    const topicSearchInput = await screen.findByLabelText('Filter Topics')
+    fireEvent.change(topicSearchInput, { target: { value: 'data' } })
+
+    expect(screen.queryByText('Programming Basics')).toBeNull()
+    expect(screen.getByText('Data Structures')).toBeDefined()
+  })
+
+  test('renders department upload stats panel after load', async () => {
+    renderDirectorDashboard()
+
+    const panelHeading = await screen.findByText('Department Upload Activity')
+    const panelSection = panelHeading.closest('section')
+
+    expect(panelSection).toBeTruthy()
+    expect(within(panelSection).getByText('Computer Science')).toBeDefined()
+    expect(within(panelSection).getByText('7 uploads')).toBeDefined()
+  })
+
+  test('opens topic drill-down modal when selecting a topic row', async () => {
+    renderDirectorDashboard()
+
+    const topicButton = await screen.findByRole('button', {
+      name: 'View courses for Programming Basics',
+    })
+    fireEvent.click(topicButton)
+
+    expect(await screen.findByText('Courses with “Programming Basics”')).toBeDefined()
+    expect(screen.getByText('CS101')).toBeDefined()
+  })
+
+  test('closes topic drill-down modal when backdrop is clicked', async () => {
+    renderDirectorDashboard()
+
+    const topicButton = await screen.findByRole('button', {
+      name: 'View courses for Programming Basics',
+    })
+    fireEvent.click(topicButton)
+
+    const modalBackdrop = await screen.findByTestId('topic-modal-backdrop')
+    fireEvent.click(modalBackdrop)
+
+    expect(screen.queryByText('Courses with “Programming Basics”')).toBeNull()
+  })
+
+  test('renders capstone placeholder cards', async () => {
+    renderDirectorDashboard()
+
+    expect(await screen.findByText('Essential Resources')).toBeDefined()
+    expect(screen.getByText('Resource Utilization by Source Type')).toBeDefined()
+    expect(screen.getByText('Semester Trend Analysis')).toBeDefined()
+    expect(screen.getByText('Content Provider Sync Status')).toBeDefined()
   })
 })

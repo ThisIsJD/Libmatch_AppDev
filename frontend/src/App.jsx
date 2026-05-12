@@ -3,7 +3,10 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import LoginPage from './pages/LoginPage.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
 import DirectorDashboard from './pages/DirectorDashboard.jsx'
+import DirectorSyllabiPage from './pages/DirectorSyllabiPage.jsx'
+import DirectorUsersPage from './pages/DirectorUsersPage.jsx'
 import TopicReviewPage from './pages/TopicReviewPage.jsx'
+import DirectorLayout from './components/templates/DirectorLayout.jsx'
 import ProtectedRoute from './routes/ProtectedRoute.jsx'
 
 function App() {
@@ -18,7 +21,11 @@ function App() {
         </Route>
 
         <Route element={<ProtectedRoute allowedRoles={['director']} />}>
-          <Route path="/director" element={<DirectorDashboard />} />
+          <Route path="/director" element={<DirectorLayout />}>
+            <Route index element={<DirectorDashboard />} />
+            <Route path="syllabi" element={<DirectorSyllabiPage />} />
+            <Route path="users" element={<DirectorUsersPage />} />
+          </Route>
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
