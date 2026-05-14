@@ -86,6 +86,7 @@ describe('DirectorDashboard', () => {
     renderDirectorDashboard()
 
     expect(await screen.findByLabelText('Topic frequency table')).toBeDefined()
+    expect(screen.queryByText('Relative Frequency')).toBeNull()
   })
 
   test('populates department filter from analytics filters endpoint', async () => {
@@ -141,7 +142,7 @@ describe('DirectorDashboard', () => {
       params: {
         course_level: '',
         department: 'Computer Science',
-        limit: 20,
+        limit: 10,
       },
     })
   })

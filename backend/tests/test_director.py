@@ -68,6 +68,30 @@ def create_syllabus(db: Session, *, course: Course, uploaded_by: User, status: s
     return syllabus
 
 
+def create_syllabus_with_file(
+    db: Session,
+    *,
+    course: Course,
+    uploaded_by: User,
+    status: str,
+    file_path: str,
+    file_type: str,
+) -> Syllabus:
+    syllabus = Syllabus(
+        course_id=course.id,
+        file_name=f'{course.course_code.lower()}.{file_type}',
+        file_path=file_path,
+        file_type=file_type,
+        raw_text=f'Syllabus for {course.course_code}',
+        uploaded_by=uploaded_by.id,
+        status=status,
+    )
+    db.add(syllabus)
+    db.commit()
+    db.refresh(syllabus)
+    return syllabus
+
+
 def create_topic(
     db: Session,
     *,
@@ -199,6 +223,93 @@ def test_director_syllabi_status_filter(
     assert response.status_code == 200
     assert len(response.json()['items']) >= 1
     assert all(item['status'] == 'processed' for item in response.json()['items'])
+
+
+def test_director_syllabus_file_requires_director(
+    client: TestClient,
+    faculty_user: User,
+):
+    headers = login_headers(client, faculty_user.email, 'libmatch123')
+
+    response = client.get(
+        f'/analytics/director/syllabi/{uuid.uuid4()}/file',
+        headers=headers,
+    )
+
+    assert response.status_code == 403
+
+
+def test_director_syllabus_file_returns_pdf_for_director(
+    client: TestClient,
+    db: Session,
+    director_user: User,
+    faculty_user: User,
+    tmp_path,
+):
+    course = create_course(
+        db,
+        created_by=faculty_user,
+        course_code='CS260',
+        department='Computer Science',
+        semester='1st Sem',
+    )
+    preview_file_path = tmp_path / 'director-preview.pdf'
+    preview_file_path.write_bytes(b'%PDF-1.4 test content')
+
+    syllabus = create_syllabus_with_file(
+        db,
+        course=course,
+        uploaded_by=faculty_user,
+        status='confirmed',
+        file_path=str(preview_file_path),
+        file_type='pdf',
+    )
+
+    headers = login_headers(client, director_user.email, 'libmatch123')
+    response = client.get(
+        f'/analytics/director/syllabi/{syllabus.id}/file',
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    assert response.headers['content-type'].startswith('application/pdf')
+    assert response.content.startswith(b'%PDF')
+
+
+def test_director_syllabus_file_rejects_docx_preview(
+    client: TestClient,
+    db: Session,
+    director_user: User,
+    faculty_user: User,
+    tmp_path,
+):
+    course = create_course(
+        db,
+        created_by=faculty_user,
+        course_code='CS261',
+        department='Computer Science',
+        semester='1st Sem',
+    )
+    preview_file_path = tmp_path / 'director-preview.docx'
+    preview_file_path.write_bytes(b'DOCX test content')
+
+    syllabus = create_syllabus_with_file(
+        db,
+        course=course,
+        uploaded_by=faculty_user,
+        status='processed',
+        file_path=str(preview_file_path),
+        file_type='docx',
+    )
+
+    headers = login_headers(client, director_user.email, 'libmatch123')
+    response = client.get(
+        f'/analytics/director/syllabi/{syllabus.id}/file',
+        headers=headers,
+    )
+
+    assert response.status_code == 422
+    assert response.json()['detail'] == 'Preview is available only for PDF syllabi.'
 
 
 def test_syllabi_coverage_includes_courses_without_syllabi(

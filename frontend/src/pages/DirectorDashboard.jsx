@@ -22,7 +22,7 @@ function DirectorDashboard() {
   const [courseLevels, setCourseLevels] = useState([])
   const [selectedDepartment, setSelectedDepartment] = useState('')
   const [selectedCourseLevel, setSelectedCourseLevel] = useState('')
-  const [visibleTopicLimit, setVisibleTopicLimit] = useState(20)
+  const [visibleTopicLimit, setVisibleTopicLimit] = useState(10)
   const [topicSearchQuery, setTopicSearchQuery] = useState('')
   const [frequencyItems, setFrequencyItems] = useState([])
   const [departmentStats, setDepartmentStats] = useState([])
@@ -220,14 +220,6 @@ function DirectorDashboard() {
   const filteredFrequencyItems = frequencyItems.filter((frequencyItem) =>
     frequencyItem.topic_text.toLowerCase().includes(normalizedSearchQuery),
   )
-  const highestTopicCount =
-    filteredFrequencyItems.reduce((maxCount, frequencyItem) => {
-      if (frequencyItem.count > maxCount) {
-        return frequencyItem.count
-      }
-
-      return maxCount
-    }, 0) || 1
 
   return (
     <section>
@@ -325,7 +317,7 @@ function DirectorDashboard() {
             <select
               aria-label="Topic Limit"
               value={String(visibleTopicLimit)}
-              onChange={(event) => setVisibleTopicLimit(Number(event.target.value) || 20)}
+              onChange={(event) => setVisibleTopicLimit(Number(event.target.value) || 10)}
               className="mt-px8 h-[40px] w-full rounded-micro border border-border bg-background px-px12 text-caption font-medium text-text-primary focus:border-primary focus:outline-none focus:ring-2 focus:ring-[rgba(0,117,222,0.15)]"
               disabled={isChartLoading}
             >
@@ -381,17 +373,11 @@ function DirectorDashboard() {
                 <tr className="border-b border-border text-left text-micro uppercase tracking-[0.125px] text-text-muted">
                   <th className="w-[64px] py-px8 pr-px8">Rank</th>
                   <th className="py-px8 pr-px8">Topic</th>
-                  <th className="w-[40%] py-px8 pr-px8">Relative Frequency</th>
                   <th className="w-[100px] py-px8 text-right">Count</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredFrequencyItems.map((frequencyItem, rowIndex) => {
-                  const relativeFrequencyPercent = Math.max(
-                    0,
-                    Math.round((frequencyItem.count / highestTopicCount) * 100),
-                  )
-
                   return (
                     <tr
                       key={frequencyItem.topic_text}
@@ -407,14 +393,6 @@ function DirectorDashboard() {
                         >
                           {frequencyItem.topic_text}
                         </button>
-                      </td>
-                      <td className="py-px10 pr-px8">
-                        <div className="h-px10 rounded-pill bg-badge-blue-bg/45">
-                          <div
-                            className="h-full rounded-pill bg-primary"
-                            style={{ width: `${relativeFrequencyPercent}%` }}
-                          />
-                        </div>
                       </td>
                       <td className="py-px10 text-right font-semibold">{frequencyItem.count}</td>
                     </tr>

@@ -95,6 +95,7 @@ describe('DirectorSyllabiPage', () => {
 
     expect(await screen.findByText('cs101.pdf')).toBeDefined()
     expect(screen.getByText('math101.pdf')).toBeDefined()
+    expect(screen.getAllByRole('button', { name: /^Preview /i })).toHaveLength(2)
   })
 
   test('department filter triggers request with department param', async () => {

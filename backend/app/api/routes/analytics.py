@@ -1,8 +1,14 @@
 from __future__ import annotations
 
+import uuid
+from pathlib import Path
+
 from fastapi import APIRouter
 from fastapi import Depends
+from fastapi import HTTPException
 from fastapi import Query
+from fastapi import status
+from fastapi.responses import FileResponse
 from sqlalchemy import case
 from sqlalchemy import func
 from sqlalchemy import select
@@ -171,6 +177,44 @@ def get_director_syllabi(
     ]
 
     return SyllabusListResponse(items=items, total=total)
+
+
+@router.get("/director/syllabi/{syllabus_id}/file")
+def get_director_syllabus_file(
+    syllabus_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_director),
+) -> FileResponse:
+    _ = current_user
+
+    syllabus = db.execute(
+        select(Syllabus).where(Syllabus.id == syllabus_id)
+    ).scalar_one_or_none()
+
+    if syllabus is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Syllabus not found",
+        )
+
+    if syllabus.file_type != "pdf":
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Preview is available only for PDF syllabi.",
+        )
+
+    file_path = Path(syllabus.file_path)
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Syllabus file not found",
+        )
+
+    return FileResponse(
+        path=str(file_path),
+        filename=syllabus.file_name,
+        media_type="application/pdf",
+    )
 
 
 @router.get("/director/syllabi/coverage", response_model=CourseCoverageResponse)

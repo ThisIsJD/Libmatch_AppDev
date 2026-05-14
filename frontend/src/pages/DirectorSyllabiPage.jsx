@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 
 import { apiClient } from '../api/client.js'
 import SkeletonBlock from '../components/atoms/SkeletonBlock.jsx'
+import DirectorSyllabusPreviewModal from '../components/organisms/DirectorSyllabusPreviewModal.jsx'
 import StatusBadge from '../components/StatusBadge.jsx'
 
 function formatDate(value) {
@@ -31,6 +32,7 @@ function DirectorSyllabiPage() {
   const [isFiltersLoading, setIsFiltersLoading] = useState(true)
   const [isSyllabiLoading, setIsSyllabiLoading] = useState(true)
   const [isCoverageLoading, setIsCoverageLoading] = useState(true)
+  const [previewSyllabusItem, setPreviewSyllabusItem] = useState(null)
   const [errorMessage, setErrorMessage] = useState('')
 
   useEffect(() => {
@@ -267,7 +269,8 @@ function DirectorSyllabiPage() {
                     <th className="py-px8 pr-px8">Department</th>
                     <th className="py-px8 pr-px8">Status</th>
                     <th className="py-px8 pr-px8">Upload Date</th>
-                    <th className="py-px8">Uploaded By</th>
+                    <th className="py-px8 pr-px8">Uploaded By</th>
+                    <th className="py-px8">Preview</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -283,7 +286,17 @@ function DirectorSyllabiPage() {
                         <StatusBadge status={syllabusItem.status} />
                       </td>
                       <td className="py-px10 pr-px8">{formatDate(syllabusItem.upload_date)}</td>
-                      <td className="py-px10">{syllabusItem.uploaded_by_name}</td>
+                      <td className="py-px10 pr-px8">{syllabusItem.uploaded_by_name}</td>
+                      <td className="py-px10">
+                        <button
+                          type="button"
+                          className="rounded-micro border border-border bg-background px-px10 py-px6 text-caption font-semibold text-text-primary transition-colors duration-150 hover:bg-background-alt"
+                          onClick={() => setPreviewSyllabusItem(syllabusItem)}
+                          aria-label={`Preview ${syllabusItem.file_name}`}
+                        >
+                          Preview
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -332,6 +345,12 @@ function DirectorSyllabiPage() {
           </div>
         )}
       </section>
+
+      <DirectorSyllabusPreviewModal
+        isOpen={Boolean(previewSyllabusItem)}
+        syllabusItem={previewSyllabusItem}
+        onClose={() => setPreviewSyllabusItem(null)}
+      />
     </section>
   )
 }
