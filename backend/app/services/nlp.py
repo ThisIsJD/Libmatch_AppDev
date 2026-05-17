@@ -21,6 +21,8 @@ KEYWORD_WEIGHT_MAP = {
     "ADJ": 1.2,
     "VERB": 1.0,
 }
+
+# Minimum length for keyword text to filter out short non-informative candidates
 MIN_KEYWORD_TEXT_LEN = 3
 DEFAULT_MIN_KEYWORDS = 3
 DEFAULT_MAX_KEYWORDS = 4

@@ -46,4 +46,7 @@ new_skills/
 .github-template/
 .github
 GEMINI.md
+ARCHITECTURE.md
+LibmatchCapstoneDevRepo.md
+MigrationSetUp.md
 update_skills.py

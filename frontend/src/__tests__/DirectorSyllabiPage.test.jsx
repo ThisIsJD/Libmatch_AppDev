@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
@@ -101,34 +101,42 @@ describe('DirectorSyllabiPage', () => {
   test('department filter triggers request with department param', async () => {
     renderDirectorSyllabiPage()
 
+    await screen.findByText('cs101.pdf')
+    await screen.findByText('CS999')
     const departmentSelect = await screen.findByLabelText('Department Filter')
     fireEvent.change(departmentSelect, { target: { value: 'Computer Science' } })
 
-    expect(apiClient.get).toHaveBeenCalledWith('/analytics/director/syllabi', {
-      params: {
-        department: 'Computer Science',
-        page: 1,
-        page_size: 50,
-        semester: '',
-        status: '',
-      },
+    await waitFor(() => {
+      expect(apiClient.get).toHaveBeenCalledWith('/analytics/director/syllabi', {
+        params: {
+          department: 'Computer Science',
+          page: 1,
+          page_size: 50,
+          semester: '',
+          status: '',
+        },
+      })
     })
   })
 
   test('status filter triggers request with status param', async () => {
     renderDirectorSyllabiPage()
 
+    await screen.findByText('cs101.pdf')
+    await screen.findByText('CS999')
     const statusSelect = await screen.findByLabelText('Status Filter')
     fireEvent.change(statusSelect, { target: { value: 'processed' } })
 
-    expect(apiClient.get).toHaveBeenCalledWith('/analytics/director/syllabi', {
-      params: {
-        department: '',
-        page: 1,
-        page_size: 50,
-        semester: '',
-        status: 'processed',
-      },
+    await waitFor(() => {
+      expect(apiClient.get).toHaveBeenCalledWith('/analytics/director/syllabi', {
+        params: {
+          department: '',
+          page: 1,
+          page_size: 50,
+          semester: '',
+          status: 'processed',
+        },
+      })
     })
   })
 
@@ -146,11 +154,11 @@ describe('DirectorSyllabiPage', () => {
       }
 
       if (url === '/analytics/filters') {
-        return Promise.resolve({ data: { departments: [], course_levels: [] } })
+        return new Promise(() => {})
       }
 
       if (url === '/analytics/director/syllabi/coverage') {
-        return Promise.resolve({ data: { items: [] } })
+        return new Promise(() => {})
       }
 
       return Promise.resolve({ data: {} })

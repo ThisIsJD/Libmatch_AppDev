@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
@@ -110,10 +110,14 @@ describe('DirectorDashboard', () => {
   test('shows loading skeleton while chart request is in flight', () => {
     apiClient.get.mockImplementation((url) => {
       if (url === '/analytics/filters') {
-        return Promise.resolve({ data: { departments: [], course_levels: [] } })
+        return new Promise(() => {})
       }
 
       if (url === '/analytics/topics/frequency') {
+        return new Promise(() => {})
+      }
+
+      if (url === '/analytics/director/departments/upload-stats') {
         return new Promise(() => {})
       }
 
@@ -135,30 +139,36 @@ describe('DirectorDashboard', () => {
   test('refetches frequency data when department filter changes', async () => {
     renderDirectorDashboard()
 
+    await screen.findByLabelText('Topic frequency table')
     const departmentSelect = await screen.findByLabelText('Department')
     fireEvent.change(departmentSelect, { target: { value: 'Computer Science' } })
 
-    expect(apiClient.get).toHaveBeenCalledWith('/analytics/topics/frequency', {
-      params: {
-        course_level: '',
-        department: 'Computer Science',
-        limit: 10,
-      },
+    await waitFor(() => {
+      expect(apiClient.get).toHaveBeenCalledWith('/analytics/topics/frequency', {
+        params: {
+          course_level: '',
+          department: 'Computer Science',
+          limit: 10,
+        },
+      })
     })
   })
 
   test('refetches frequency data when topic limit changes', async () => {
     renderDirectorDashboard()
 
+    await screen.findByLabelText('Topic frequency table')
     const topicLimitSelect = await screen.findByLabelText('Topic Limit')
     fireEvent.change(topicLimitSelect, { target: { value: '50' } })
 
-    expect(apiClient.get).toHaveBeenCalledWith('/analytics/topics/frequency', {
-      params: {
-        course_level: '',
-        department: '',
-        limit: 50,
-      },
+    await waitFor(() => {
+      expect(apiClient.get).toHaveBeenCalledWith('/analytics/topics/frequency', {
+        params: {
+          course_level: '',
+          department: '',
+          limit: 50,
+        },
+      })
     })
   })
 
